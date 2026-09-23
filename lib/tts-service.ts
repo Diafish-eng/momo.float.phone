@@ -25,6 +25,7 @@ export function resolveVoiceConfig(characterId: string, appId?: ContentAppId): V
  * Supported providers:
  * - Minimax: REST API → hex-encoded mp3
  * - OpenAI: REST API → binary audio blob
+ * - FishAudio: 经本站 /api/voice/fish-tts 转发（Fish 不允许浏览器直连）→ mp3
  */
 export async function synthesizeSpeech(
     text: string,
@@ -41,6 +42,10 @@ export async function synthesizeSpeech(
 
     if (provider === "OpenAI") {
         return synthesizeOpenAI(text, voiceConfig);
+    }
+
+    if (provider === "FishAudio") {
+        return synthesizeFish(text, voiceConfig);
     }
 
     return null;
@@ -175,6 +180,39 @@ async function synthesizeOpenAI(text: string, config: VoiceApiConfig): Promise<B
 
     const blob = await response.blob();
     return new Blob([await blob.arrayBuffer()], { type: "audio/mpeg" });
+}
+
+// ── Fish Audio TTS ──────────────────────────────────
+
+/** 从 Fish Audio 音色页链接（如 https://fish.audio/zh-CN/m/<id>/）或纯 ID 里取出 Voice ID */
+export function extractFishVoiceId(value: string | undefined): string {
+    const raw = String(value || "").trim();
+    const m = raw.match(/[0-9a-f]{32}/i);
+    return m ? m[0].toLowerCase() : raw;
+}
+
+async function synthesizeFish(text: string, config: VoiceApiConfig): Promise<Blob | null> {
+    if (!config.apiKey) throw new Error("Fish Audio API Key 未配置");
+    const response = await fetchWithTimeout("/api/voice/fish-tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            apiKey: config.apiKey,
+            text,
+            model: config.model || "s2.1-pro",
+            referenceId: extractFishVoiceId(config.defaultVoice),
+            ...(typeof config.speechSpeed === "number" && Number.isFinite(config.speechSpeed)
+                ? { speed: Math.min(2, Math.max(0.5, config.speechSpeed)) }
+                : {}),
+        }),
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error((err && (err.error || err.message)) || `Fish Audio 请求失败 (${response.status})`);
+    }
+    const buf = await response.arrayBuffer();
+    if (!buf.byteLength) throw new Error("Fish Audio 未返回音频数据");
+    return new Blob([buf], { type: "audio/mpeg" });
 }
 
 // ── iOS audio playback that coexists with speech recognition ──────────
