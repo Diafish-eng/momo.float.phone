@@ -12,13 +12,17 @@ export async function POST(request: Request) {
     const apiKey = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
     if (!apiKey) return Response.json({ ok: false, error: "请先填写 API Key" }, { status: 400 });
     const keyword = typeof body.keyword === "string" ? body.keyword.trim().slice(0, 60) : "";
+    const language = typeof body.language === "string" && /^[a-z]{2,3}(-[A-Za-z]{2,4})?$/.test(body.language) ? body.language : "";
 
     const url = new URL("https://api.fish.audio/model");
     url.searchParams.set("page_size", keyword ? "30" : "100");
     url.searchParams.set("page_number", "1");
-    if (keyword) {
-        url.searchParams.set("title", keyword);
+    if (keyword || language) {
+        // 搜索公开音色库：可按名字，也可只按语种浏览热门音色
+        if (keyword) url.searchParams.set("title", keyword);
+        if (language) url.searchParams.set("language", language);
         url.searchParams.set("sort_by", "score");
+        url.searchParams.set("page_size", "30");
     } else {
         url.searchParams.set("self", "true");
         url.searchParams.set("sort_by", "created_at");
@@ -35,7 +39,7 @@ export async function POST(request: Request) {
         const voices = items.flatMap(item => {
             const id = String(item._id || item.id || "").trim();
             if (!id) return [];
-            const who = keyword && item.author?.nickname ? ` · ${item.author.nickname}` : "";
+            const who = (keyword || language) && item.author?.nickname ? ` · ${item.author.nickname}` : "";
             return [{ id, name: `${item.title || "未命名音色"}${who}` }];
         });
         return Response.json({ ok: true, voices }, { headers: { "Cache-Control": "no-store" } });

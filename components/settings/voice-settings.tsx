@@ -33,6 +33,26 @@ const VOICE_PROVIDER_OPTIONS = [
     { value: "FishAudio", label: "Fish Audio" },
 ];
 
+// Fish Audio 没有「指定语种」参数：它会按文字本身的语言朗读（中文就读中文，日文就读日文）。
+// 这里的语种用来：①试听用对应语言的句子；②在音色库里按语种找音色（不同语种要选会说该语言的音色才自然）。
+const FISH_LANGUAGE_OPTIONS = [
+    { value: "", label: "自动（跟随文字）", preview: "" },
+    { value: "zh", label: "中文", preview: "Chinese" },
+    { value: "en", label: "英语", preview: "English" },
+    { value: "ja", label: "日语", preview: "Japanese" },
+    { value: "ko", label: "韩语", preview: "Korean" },
+    { value: "fr", label: "法语", preview: "French" },
+    { value: "de", label: "德语", preview: "German" },
+    { value: "es", label: "西班牙语", preview: "Spanish" },
+    { value: "pt", label: "葡萄牙语", preview: "Portuguese" },
+    { value: "it", label: "意大利语", preview: "Italian" },
+    { value: "ru", label: "俄语", preview: "Russian" },
+    { value: "ar", label: "阿拉伯语", preview: "Arabic" },
+    { value: "th", label: "泰语", preview: "Thai" },
+    { value: "vi", label: "越南语", preview: "Vietnamese" },
+    { value: "id", label: "印尼语", preview: "Indonesian" },
+];
+
 const FISH_MODELS = [
     { id: "s2.1-pro", name: "s2.1-pro（推荐，最新）" },
     { id: "s2-pro", name: "s2-pro" },
@@ -263,6 +283,7 @@ export function VoiceSettings() {
     const [fetchedVoices, setFetchedVoices] = useState<Record<string, VoiceOption[]>>({});
     const [fetchError, setFetchError] = useState<Record<string, string>>({});
     const [fishKeyword, setFishKeyword] = useState<Record<string, string>>({});
+    const [fishSearchByLang, setFishSearchByLang] = useState<Record<string, boolean>>({});
 
     // Load from localStorage on mount
     useEffect(() => {
@@ -532,15 +553,16 @@ export function VoiceSettings() {
             } else if (config.provider === "FishAudio") {
                 if (!config.apiKey.trim()) throw new Error("请先填写 Fish Audio API Key");
                 const keyword = (fishKeyword[config.id] || "").trim();
+                const searchLang = fishSearchByLang[config.id] ? (config.fishLanguage || "") : "";
                 const response = await fetch("/api/voice/fish-voices", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ apiKey: config.apiKey, keyword }),
+                    body: JSON.stringify({ apiKey: config.apiKey, keyword, language: searchLang }),
                 });
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok || data.ok === false) throw new Error(data.error || `同步失败 (${response.status})`);
                 const voices = Array.isArray(data.voices) ? data.voices as VoiceOption[] : [];
-                if (!keyword) {
+                if (!keyword && !searchLang) {
                     // 「我的音色」记进配置，下次打开不用再同步
                     const nextCustomVoices = uniqueOptions([...voices, ...(config.customVoices || [])]);
                     updateConfig(config.id, { customVoices: nextCustomVoices });
@@ -548,7 +570,7 @@ export function VoiceSettings() {
                     if (!voices.length) setFetchError(prev => ({ ...prev, [config.id]: "你的账户里还没有自己的音色，可以在上面搜索音色库，或直接粘贴音色链接" }));
                 } else {
                     setFetchedVoices(prev => ({ ...prev, [config.id]: uniqueOptions([...voices, ...(config.customVoices || [])]) }));
-                    if (!voices.length) setFetchError(prev => ({ ...prev, [config.id]: `没有搜到「${keyword}」相关的音色` }));
+                    if (!voices.length) setFetchError(prev => ({ ...prev, [config.id]: keyword ? `没有搜到「${keyword}」相关的音色` : "这个语种暂时没搜到音色" }));
                 }
             } else {
                 throw new Error("该服务商暂不支持拉取模型列表");
@@ -580,9 +602,16 @@ export function VoiceSettings() {
         setPlayingVoiceId(config.id);
 
         try {
+            const fishPreviewKey = config.provider === "FishAudio"
+                ? FISH_LANGUAGE_OPTIONS.find(o => o.value === config.fishLanguage)?.preview
+                : "";
             const previewText = config.provider === "Minimax" && config.languageBoost
                 ? MINIMAX_PREVIEW_TEXT[config.languageBoost] || "你好，很高兴认识你。这是一段语音试听。"
-                : "你好，我现在是" + (config.defaultVoice || "默认") + "音色。很高兴认识你。";
+                : fishPreviewKey
+                    ? MINIMAX_PREVIEW_TEXT[fishPreviewKey] || "你好，很高兴认识你。"
+                    : config.provider === "FishAudio"
+                        ? "你好，很高兴认识你。这是一段语音试听。"
+                        : "你好，我现在是" + (config.defaultVoice || "默认") + "音色。很高兴认识你。";
             const blob = await synthesizeSpeech(
                 previewText,
                 config,
@@ -907,6 +936,30 @@ export function VoiceSettings() {
                                                     </select>
                                                 </div>
                                                 <div className="flex flex-col gap-1">
+                                                    <label className="menu-desc ml-1">朗读语种</label>
+                                                    <select
+                                                        value={config.fishLanguage || ""}
+                                                        onChange={(e) => updateConfig(config.id, { fishLanguage: e.target.value || undefined })}
+                                                        className="ui-select"
+                                                    >
+                                                        {FISH_LANGUAGE_OPTIONS.map(option => (
+                                                            <option key={option.value || "auto"} value={option.value}>{option.label}</option>
+                                                        ))}
+                                                    </select>
+                                                    <span className="menu-desc ml-1">
+                                                        Fish Audio 会按文字本身的语言朗读：角色说日语就读日语，说中文就读中文，不会自动翻译。想让角色用外语说话，可以在聊天设置里打开「双语翻译」，让角色说外语、下方附中文翻译，朗读时只读外语原文。这里选的语种用于试听，也可以在下面按语种找会说这门语言的音色。
+                                                    </span>
+                                                    {config.fishLanguage && (
+                                                        <div className="ui-toggle-row">
+                                                            <span className="menu-label">搜索音色库时只找「{FISH_LANGUAGE_OPTIONS.find(o => o.value === config.fishLanguage)?.label}」音色</span>
+                                                            <Toggle
+                                                                checked={!!fishSearchByLang[config.id]}
+                                                                onChange={(v) => setFishSearchByLang(prev => ({ ...prev, [config.id]: v }))}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col gap-1">
                                                     <div className="flex items-center justify-between px-1">
                                                         <label className="menu-desc">语速 (Speed)</label>
                                                         <span className="menu-label font-medium">{(config.speechSpeed ?? DEFAULT_SPEECH_SPEED).toFixed(1)}×</span>
@@ -1007,7 +1060,7 @@ export function VoiceSettings() {
                                                         className="ui-btn ui-btn ui-btn-soft-action w-full"
                                                     >
                                                         <RefreshCw size={16} className={isFetching[config.id] ? "animate-spin" : ""} />
-                                                        {isFetching[config.id] ? "同步中..." : config.provider === "Minimax" ? "同步音色列表" : config.provider === "FishAudio" ? ((fishKeyword[config.id] || "").trim() ? "搜索音色库" : "同步我的音色") : "显示默认音色"}
+                                                        {isFetching[config.id] ? "同步中..." : config.provider === "Minimax" ? "同步音色列表" : config.provider === "FishAudio" ? (((fishKeyword[config.id] || "").trim() || (fishSearchByLang[config.id] && config.fishLanguage)) ? "搜索音色库" : "同步我的音色") : "显示默认音色"}
                                                     </button>
                                                     {config.provider === "Minimax" && (
                                                         <button

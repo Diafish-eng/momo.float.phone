@@ -167,6 +167,8 @@ export type VoiceApiConfig = {
     sttModel?: string;
     defaultVoice: string;
     languageBoost?: string;
+    /** Fish Audio 朗读语种（ISO 代码如 zh/en/ja）。Fish 会跟随文字本身的语言朗读，这里用于试听文本和按语种筛选音色库。 */
+    fishLanguage?: string;
     /** Minimax voice_setting.speed. Missing values keep the legacy 1.0x behavior. */
     speechSpeed?: number;
     /** Minimax voice_setting.pitch（半音，±12）。缺省保持旧行为（0，原声）。 */
@@ -247,8 +249,6 @@ export type ImageGenerationSettings = {
         updatedAt: number;
         /** 角色固定外观特征，会追加到该角色的每次生图提示词。 */
         featurePrompt?: string;
-        /** NovelAI 是否追加人物专属提示词；默认开启。 */
-        novelAiFeaturePromptEnabled?: boolean;
         /** 暂时关闭参考图但保留图片与选脸区域，默认开启。 */
         enabled?: boolean;
         /** 开启时，仅自拍语义的图片使用参考图，默认开启。 */
