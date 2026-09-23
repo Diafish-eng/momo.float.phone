@@ -116,6 +116,7 @@ export type ChatMessage = {
         | "red_packet" | "transfer" | "location"
         | "poke" | "sticker" | "quote" | "dice"
         | "voice_call" | "video_call"
+        | "meeting_invite"
         | "accept_red_packet" | "decline_red_packet" | "accept_transfer" | "decline_transfer"
         | "payment_request" | "accept_payment_request" | "decline_payment_request"
         | "music" | "music_share" | "music_notify" | "music_not_found"
@@ -218,6 +219,12 @@ export type ChatMessage = {
         memoryReason?: string;    // 记忆写入原因
         memoryImportance?: number;// 记忆写入重要性
         memoryRequestStatus?: "pending" | "approved" | "ignored";
+        /** 角色发起的线下见面邀请。 */
+        meetingInviteStatus?: "pending" | "accepted" | "declined";
+        meetingInviteCharacterId?: string;
+        meetingInviteCharacterName?: string;
+        meetingInviteResolvedAt?: string;
+        meetingInviteStorySessionId?: string;
         fileType?: "audio" | "image" | "video" | "file";
         fileName?: string;
         fileDuration?: number;
@@ -277,6 +284,38 @@ export type ChatMessage = {
     senderName?: string; // cached display name to avoid repeated lookups
 };
 
+export type MeetingInviteCardConfig = {
+    mode: "native" | "custom";
+    /** 附加到私聊提示词中的邀请输出约定；固定控制标记仍由系统兜底。 */
+    contract: string;
+    /** 沙盒中运行的 HTML/CSS/JS；可用 window.STATUS_RAW / {{RAW}} 读取卡片数据。 */
+    renderHtml: string;
+    previewRaw: string;
+};
+
+export const DEFAULT_MEETING_INVITE_CONTRACT = "当你确实希望与用户线下见面时，在自然回复末尾另起一行输出 [线下见面邀请]。不要频繁邀请，每轮最多一次。";
+
+export const DEFAULT_MEETING_INVITE_PREVIEW = "邀请人=char\n标题=char想邀请你见面，是否同意？\n说明=同意后会自动建立新的剧情分线，并从这次见面开始。\n状态=pending";
+
+export const DEFAULT_MEETING_INVITE_RENDER = `<style>
+*{box-sizing:border-box}body{margin:0;background:transparent;color:#47382d;font:13px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}.card{padding:16px;border-radius:16px;background:linear-gradient(145deg,#fffaf2,#fff);border:1px solid rgba(160,120,76,.18);box-shadow:0 8px 24px rgba(82,58,34,.10)}.eyebrow{font-size:10px;letter-spacing:.16em;opacity:.56;margin-bottom:8px}.title{display:block;font-size:15px;line-height:1.45}.desc{margin:7px 0 14px;font-size:12px;opacity:.65}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions button{border-radius:10px;padding:9px 8px;font:inherit}.decline{border:1px solid rgba(71,56,45,.16);background:rgba(255,255,255,.72);color:inherit}.accept{border:0;background:#4b4038;color:#fff}.result{font-size:12px;opacity:.72}
+</style>
+<section class="card"><div class="eyebrow">OFFLINE INVITATION</div><strong id="title" class="title"></strong><p id="desc" class="desc"></p><div id="actions" class="actions"><button class="decline" data-meeting-action="decline">不同意（不要见面）</button><button class="accept" data-meeting-action="accept">同意</button></div><div id="result" class="result" hidden></div></section>
+<script>
+const data={};for(const line of (window.STATUS_RAW||'').split(/\\n+/)){const i=line.indexOf('=');if(i>0)data[line.slice(0,i).trim()]=line.slice(i+1).trim()}
+document.getElementById('title').textContent=data['标题']||'他想邀请你见面，是否同意？';document.getElementById('desc').textContent=data['说明']||'';const status=data['状态']||'pending';if(status!=='pending'){document.getElementById('actions').hidden=true;const result=document.getElementById('result');result.hidden=false;result.textContent=status==='accepted'?'已同意，正在进入见面剧情':'已选择不见面'}
+</script>`;
+
+export function resolveMeetingInviteCardConfig(settings?: ChatAppSettings): MeetingInviteCardConfig {
+    const raw = settings?.meetingInviteCard;
+    return {
+        mode: raw?.mode === "custom" ? "custom" : "native",
+        contract: typeof raw?.contract === "string" ? raw.contract : DEFAULT_MEETING_INVITE_CONTRACT,
+        renderHtml: typeof raw?.renderHtml === "string" ? raw.renderHtml : DEFAULT_MEETING_INVITE_RENDER,
+        previewRaw: typeof raw?.previewRaw === "string" ? raw.previewRaw : DEFAULT_MEETING_INVITE_PREVIEW,
+    };
+}
+
 export type ChatAppSettings = {
     globalAppBackground?: string; // base64 or URL
     /** 私聊内“我的头像”默认值；单独会话头像优先 */
@@ -285,6 +324,8 @@ export type ChatAppSettings = {
     globalChatBackgroundImage?: string;
     /** 聊天室 CSS 默认值；单独会话 CSS 优先，主页外观 CSS 优先级最低 */
     globalChatCustomCSS?: string;
+    /** 全局私聊的邀请见面卡片输出契约与沙盒渲染。 */
+    meetingInviteCard?: MeetingInviteCardConfig;
     /** 私聊默认传入的最近图片数量；单独会话设置优先 */
     globalVisionImagePromptLimit?: number;
     timeAware?: boolean; // When true, inject timestamps into prompt so AI knows message timing (default: true)

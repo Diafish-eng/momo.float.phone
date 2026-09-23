@@ -16,7 +16,7 @@ function serializeForInlineScript(value: string): string {
     return JSON.stringify(value).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
 }
 
-function buildSrcDoc(html: string, raw: string, frameId: string, kind: "status" | "theater"): string {
+function buildSrcDoc(html: string, raw: string, frameId: string, kind: "status" | "theater" | "meeting"): string {
     const withRaw = html.split("{{RAW}}").join(escapeHtmlText(raw));
     const base = /<html[\s>]/i.test(withRaw)
         ? withRaw
@@ -28,7 +28,7 @@ function buildSrcDoc(html: string, raw: string, frameId: string, kind: "status" 
         : inject + base;
 }
 
-export function CustomStatusFrame({ html, raw, kind = "status", title = "自定义状态栏" }: { html: string; raw: string; kind?: "status" | "theater"; title?: string }) {
+export function CustomStatusFrame({ html, raw, kind = "status", title = "自定义状态栏", onAction }: { html: string; raw: string; kind?: "status" | "theater" | "meeting"; title?: string; onAction?: (action: "accept" | "decline") => void }) {
     const iframeRef = useRef<HTMLIFrameElement | null>(null);
     const [frameId] = useState(() => `csf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
     const [height, setHeight] = useState(FRAME_MIN_HEIGHT);
@@ -44,6 +44,7 @@ export function CustomStatusFrame({ html, raw, kind = "status", title = "自定�
   function sched(){requestAnimationFrame(function(){send();requestAnimationFrame(send);});}
   window.addEventListener('load',sched);window.addEventListener('resize',sched);
   if(window.MutationObserver)new MutationObserver(sched).observe(document.documentElement,{attributes:true,childList:true,subtree:true,characterData:true});
+  document.addEventListener('click',function(event){var target=event.target&&event.target.closest?event.target.closest('[data-meeting-action]'):null;if(!target)return;var action=target.getAttribute('data-meeting-action');if(action==='accept'||action==='decline'){event.preventDefault();parent.postMessage({source:'chat-status-frame',type:'meeting-action',id:frameId,action:action},'*')}});
   setTimeout(send,60);setTimeout(send,400);
 })();</` + `script>`;
         return /<\/body>/i.test(doc) ? doc.replace(/<\/body>/i, `${bridge}</body>`) : doc + bridge;
@@ -54,12 +55,25 @@ export function CustomStatusFrame({ html, raw, kind = "status", title = "自定�
             if (iframeRef.current && event.source !== iframeRef.current.contentWindow) return;
             const data = event.data as Record<string, unknown> | null;
             if (!data || data.source !== "chat-status-frame" || data.type !== "resize" || data.id !== frameId) return;
-            const next = Number(data.height);
-            if (Number.isFinite(next)) setHeight(Math.min(Math.max(next, FRAME_MIN_HEIGHT), 1200));
+            if (data.type === "resize") {
+                const next = Number(data.height);
+                if (Number.isFinite(next)) setHeight(Math.min(Math.max(next, FRAME_MIN_HEIGHT), 1200));
+            }
         };
         window.addEventListener("message", handleMessage);
         return () => window.removeEventListener("message", handleMessage);
     }, [frameId]);
+
+    useEffect(() => {
+        const handleAction = (event: MessageEvent) => {
+            if (iframeRef.current && event.source !== iframeRef.current.contentWindow) return;
+            const data = event.data as Record<string, unknown> | null;
+            if (!data || data.source !== "chat-status-frame" || data.type !== "meeting-action" || data.id !== frameId) return;
+            if (data.action === "accept" || data.action === "decline") onAction?.(data.action);
+        };
+        window.addEventListener("message", handleAction);
+        return () => window.removeEventListener("message", handleAction);
+    }, [frameId, onAction]);
 
     return (
         <iframe

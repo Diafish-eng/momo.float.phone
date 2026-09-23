@@ -44,6 +44,8 @@ type StorySettingsPageProps = {
   onBranchCreate: (input: StoryBranchCreateInput) => void;
   onBranchDelete: (sessionIds: string[]) => void;
   onSessionUpdate: (sessionId: string, updates: Partial<StorySession>) => void;
+  onExportSession: (sessionId: string) => void;
+  onExportAll: () => void;
   onUiPrefsChange: (prefs: StoryUiPrefs) => void;
   onSettingsChange: (settings: StoryCharacterSettings) => void;
   /** 编辑公用仓库里的方案定义（新增/删除/改名/改内容都在这里落盘）。 */
@@ -452,6 +454,11 @@ export function StorySettingsPage(props: StorySettingsPageProps) {
   };
   const [wallpaperOpen, setWallpaperOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const fontFileRef = useRef<HTMLInputElement | null>(null);
+  const [fontUrlDraft, setFontUrlDraft] = useState(props.uiPrefs.customFontUrl || "");
+  useEffect(() => {
+    setFontUrlDraft(props.uiPrefs.customFontUrl || "");
+  }, [props.activeSessionId, props.uiPrefs.customFontUrl]);
   const availablePrompts = useMemo(
     () => (props.boundPreset?.prompts || []).filter((item) => !item.marker && item.content?.trim()),
     [props.boundPreset],
@@ -467,6 +474,45 @@ export function StorySettingsPage(props: StorySettingsPageProps) {
     const reader = new FileReader();
     reader.onload = () => props.onUiPrefsChange({ ...props.uiPrefs, wallpaper: typeof reader.result === "string" ? reader.result : undefined });
     reader.readAsDataURL(file);
+  };
+
+  const readCustomFont = (file?: File) => {
+    if (!file) return;
+    const supported = /\.(?:ttf|otf|woff2?)$/i.test(file.name) || file.type.startsWith("font/") || file.type === "application/font-woff";
+    if (!supported) {
+      window.alert("请选择 TTF、OTF、WOFF 或 WOFF2 字体文件");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      window.alert("字体文件不能超过 8MB，建议使用精简后的 WOFF2 字体");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") return;
+      setFontUrlDraft("");
+      props.onUiPrefsChange({
+        ...props.uiPrefs,
+        customFontDataUrl: reader.result,
+        customFontUrl: undefined,
+        customFontName: file.name,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const applyCustomFontUrl = () => {
+    const value = fontUrlDraft.trim();
+    if (value && !/^https?:\/\//i.test(value)) {
+      window.alert("请填写以 http:// 或 https:// 开头的字体直链");
+      return;
+    }
+    props.onUiPrefsChange({
+      ...props.uiPrefs,
+      customFontDataUrl: undefined,
+      customFontUrl: value || undefined,
+      customFontName: value ? "URL 字体" : undefined,
+    });
   };
 
   if (wallpaperOpen) {
@@ -514,6 +560,8 @@ export function StorySettingsPage(props: StorySettingsPageProps) {
           onBranchCreate={props.onBranchCreate}
           onBranchDelete={props.onBranchDelete}
           onSessionUpdate={props.onSessionUpdate}
+          onExportSession={props.onExportSession}
+          onExportAll={props.onExportAll}
         />
 
         <SettingCard title="剧情预设设置" hint="建议给剧情 APP 单独制作专属预设，避免影响其他应用">
@@ -556,7 +604,39 @@ export function StorySettingsPage(props: StorySettingsPageProps) {
 
         <SettingCard title="语音与播放">
           <ToggleRow title="开启语音" detail="启动当前角色绑定到剧情 APP 的语音；不会自动阅读" checked={Boolean(props.uiPrefs.voiceEnabled)} onChange={(value) => props.onUiPrefsChange({ ...props.uiPrefs, voiceEnabled: value })} />
+          {props.activeGroupId ? <p className="story-settings-note">多人剧情角色语音不统一，当前可能默认绑定第一个角色的语音。</p> : null}
           <p className="story-settings-note">总播放键按次播放下一句；每句对白末尾的小按钮仍可单独播放。</p>
+        </SettingCard>
+
+        <SettingCard title="自定义字体" hint="只应用于当前剧情会话；可上传字体文件或填写字体直链">
+          <input
+            ref={fontFileRef}
+            hidden
+            type="file"
+            accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2"
+            onChange={(event) => {
+              readCustomFont(event.target.files?.[0]);
+              event.target.value = "";
+            }}
+          />
+          <button className="story-settings-row-button" type="button" onClick={() => fontFileRef.current?.click()}>
+            <span><strong>从本机选择字体</strong><small>{props.uiPrefs.customFontDataUrl ? props.uiPrefs.customFontName || "已上传字体" : "支持 TTF / OTF / WOFF / WOFF2，最大 8MB"}</small></span>
+            <Upload size={16} />
+          </button>
+          <label className="story-settings-field">
+            <span>字体 URL</span>
+            <input value={fontUrlDraft} onChange={(event) => setFontUrlDraft(event.target.value)} placeholder="https://example.com/font.woff2" />
+          </label>
+          <div className="story-settings-inline story-settings-inline-with-save">
+            <button type="button" className="story-scheme-save" onClick={applyCustomFontUrl}>应用 URL</button>
+            {(props.uiPrefs.customFontDataUrl || props.uiPrefs.customFontUrl) ? (
+              <button type="button" onClick={() => {
+                setFontUrlDraft("");
+                props.onUiPrefsChange({ ...props.uiPrefs, customFontDataUrl: undefined, customFontUrl: undefined, customFontName: undefined });
+              }}>恢复默认字体</button>
+            ) : null}
+          </div>
+          <p className="story-settings-note">远程字体必须是可直接访问的字体文件，并允许跨域加载；否则浏览器会自动回退到默认剧情字体。</p>
         </SettingCard>
 
         <SettingCard title="自动阅读" hint="开启后可在“续写”旁启动自动滚动，解放双手阅读">

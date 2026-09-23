@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  ArrowDownTrayIcon,
   PlusIcon,
   TrashIcon,
   XMarkIcon,
@@ -11,6 +12,7 @@ import {
 import { Avatar } from "@/components/ui/primitives";
 import type { Character } from "@/lib/character-types";
 import type { StoryGroup, StorySession } from "@/lib/story-storage";
+import { fileToUserAvatarDataUrl } from "@/lib/user-avatar-image";
 
 export type StoryBranchCreateInput = {
   name: string;
@@ -35,9 +37,14 @@ type StoryPaginationManagerProps = {
   onBranchCreate: (input: StoryBranchCreateInput) => void;
   onBranchDelete: (sessionIds: string[]) => void;
   onSessionUpdate: (sessionId: string, updates: Partial<StorySession>) => void;
+  onExportSession: (sessionId: string) => void;
+  onExportAll: () => void;
 };
 
-function AvatarCollage({ characters, large = false }: { characters: Character[]; large?: boolean }) {
+function AvatarCollage({ characters, large = false, customAvatar }: { characters: Character[]; large?: boolean; customAvatar?: string }) {
+  if (customAvatar) {
+    return <span className={`story-custom-avatar${large ? " is-large" : ""}`}><img src={customAvatar} alt="剧情头像" /></span>;
+  }
   const visible = characters.slice(0, 4);
   if (visible.length <= 1) {
     const character = visible[0];
@@ -63,6 +70,7 @@ export function StoryPaginationManager(props: StoryPaginationManagerProps) {
   const [independentStory, setIndependentStory] = useState(false);
   const [deleteSelection, setDeleteSelection] = useState<string[]>([]);
   const [tagDraft, setTagDraft] = useState("");
+  const storyAvatarInputRef = useRef<HTMLInputElement>(null);
 
   const activeGroup = props.groups.find((group) => group.id === props.activeGroupId) || null;
   const activeOwnerCharacters = useMemo(() => {
@@ -116,6 +124,16 @@ export function StoryPaginationManager(props: StoryPaginationManagerProps) {
     if (!tag || !mainSession) return;
     props.onSessionUpdate(mainSession.id, { catalogTags: Array.from(new Set([...tags, tag])) });
     setTagDraft("");
+  };
+
+  const changeStoryAvatar = async (file?: File) => {
+    if (!file || !mainSession) return;
+    try {
+      const avatar = await fileToUserAvatarDataUrl(file);
+      props.onSessionUpdate(mainSession.id, { storyAvatar: avatar });
+    } catch {
+      window.alert("剧情头像处理失败，请换一张图片重试");
+    }
   };
 
   return (
@@ -172,6 +190,21 @@ export function StoryPaginationManager(props: StoryPaginationManagerProps) {
         ) : null}
       </section>
 
+      <section className="story-settings-card story-owner-avatar-card">
+        <div className="story-owner-avatar-preview">
+          <AvatarCollage characters={activeOwnerCharacters} customAvatar={mainSession?.storyAvatar} />
+        </div>
+        <button type="button" className="story-owner-avatar-pick" onClick={() => storyAvatarInputRef.current?.click()}>
+          <span><strong>为当前{activeGroup ? "多人组" : "角色"}设置单独头像</strong><small>从相册选取，只用于当前剧情对象</small></span>
+          <ChevronRightIcon width={17} />
+        </button>
+        {mainSession?.storyAvatar ? <button type="button" className="story-owner-avatar-reset" onClick={() => props.onSessionUpdate(mainSession.id, { storyAvatar: undefined })}>恢复默认</button> : null}
+        <input ref={storyAvatarInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => {
+          void changeStoryAvatar(event.target.files?.[0]);
+          event.target.value = "";
+        }} />
+      </section>
+
       <section className="story-settings-card">
         <div className="story-settings-card-head">
           <div><h2>剧情分页设置</h2><p>主线固定为第一节；分线拥有各自独立的消息进度</p></div>
@@ -201,7 +234,7 @@ export function StoryPaginationManager(props: StoryPaginationManagerProps) {
           </header>
           <main className="story-catalog-scroll">
             <section className="story-book-hero">
-              <div className="story-book-cover"><AvatarCollage characters={activeOwnerCharacters} large /></div>
+              <div className="story-book-cover"><AvatarCollage characters={activeOwnerCharacters} large customAvatar={mainSession?.storyAvatar} /></div>
               <div className="story-book-meta">
                 <h1>{title}</h1>
                 <p>共 {props.sessions.length} 节</p>
@@ -223,6 +256,7 @@ export function StoryPaginationManager(props: StoryPaginationManagerProps) {
               <div className="story-directory-head">
                 <h2>目录</h2>
                 <div>
+                  <button type="button" onClick={props.onExportAll}><ArrowDownTrayIcon width={14} />导出全部</button>
                   <button type="button" onClick={() => setBranchModalOpen(true)}><PlusIcon width={14} />增加分线</button>
                   <button
                     type="button"
@@ -278,16 +312,20 @@ export function StoryPaginationManager(props: StoryPaginationManagerProps) {
                               session.inheritRecentMemory ? "已继承最近记忆" : "从创建时开始",
                             ].join(" · ")}
                           </small>
+                          <small className="story-directory-date">最近聊天：{session.lastMessageAt || session.lastMessageId ? new Date(session.lastMessageAt || session.updatedAt).toLocaleString() : "还没有聊天"}</small>
                         </span>
                       </div>
-                      {!isMain && session.independentStory && !session.includedInMemoryAt ? (
-                        <button type="button" className="story-branch-memory" onClick={() => {
-                          if (window.confirm("结束这条独立剧情并把剧情摘要加入角色记忆？")) {
-                            const now = new Date().toISOString();
-                            props.onSessionUpdate(session.id, { endedAt: now, includedInMemoryAt: now });
-                          }
-                        }}>结束并加入记忆</button>
-                      ) : null}
+                      <div className="story-directory-actions">
+                        {!isMain && session.independentStory && !session.includedInMemoryAt ? (
+                          <button type="button" className="story-branch-memory" onClick={() => {
+                            if (window.confirm("结束这条独立剧情并把剧情摘要加入角色记忆？")) {
+                              const now = new Date().toISOString();
+                              props.onSessionUpdate(session.id, { endedAt: now, includedInMemoryAt: now });
+                            }
+                          }}>结束并加入记忆</button>
+                        ) : null}
+                        <button type="button" className="story-branch-export" aria-label={`导出${session.branchName || "剧情"}`} onClick={() => props.onExportSession(session.id)}><ArrowDownTrayIcon width={14} /></button>
+                      </div>
                     </div>
                   );
                 })}

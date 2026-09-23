@@ -22,6 +22,7 @@ import {
     createResponseBatchId,
     createToolExecutionId,
     isSessionStreamingEnabled,
+    resolveMeetingInviteCardConfig,
 } from "./chat-storage";
 import { extractTextToolDirectiveText, stripTextToolDirectives } from "./text-tool-protocol";
 import { applyWithProtectedAvatarDecisionMarkers, findUserAvatarChangeIntent } from "./chat-avatar-intent";
@@ -1970,6 +1971,17 @@ export async function buildChatPromptMessages(
         llmMessages.push({
             role: "system",
             content: `当前会话状态：${character.name}已被${userIdentity?.name || "用户"}拉黑，${character.name}知道自己发出的消息会被拒收。`,
+        });
+    }
+    if (!session.isGroup && !isOfflineMode && resolvedAppId === "chat") {
+        const meetingInviteConfig = resolveMeetingInviteCardConfig(loadChatAppSettings());
+        llmMessages.push({
+            role: "system",
+            content: [
+                meetingInviteConfig.contract.trim() || "你可以根据当前对话语境，自主决定是否邀请用户线下见面。不要机械邀请，也不要频繁使用。",
+                "只有当你确实想见面时，才在自然回复的末尾另起一行输出固定控制标记：[线下见面邀请]。",
+                "控制标记会被界面转换成邀请卡片，不要解释标记、不要改写格式、每轮最多输出一次。",
+            ].join("\n"),
         });
     }
     if (avatarChangeIntent) {

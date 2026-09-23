@@ -1113,6 +1113,22 @@ export function ImageGenerationSettings() {
                             <span className="menu-desc ml-1">生成该角色图片时自动追加，OpenAI 与 NovelAI 均生效。</span>
                         </div>
 
+                        {settings.provider === "novelai" && (
+                            <div className="menu-item !px-0 !py-0">
+                                <span className="settings-tools-menu-copy">
+                                    <span className="menu-label appearance-menu-item-label">NovelAI 使用人物专属提示词</span>
+                                    <span className="menu-desc settings-tools-menu-desc">关闭后 NAI 只使用当前画面描述与预设，不追加上方人物特征。</span>
+                                </span>
+                                <span className="menu-right settings-tools-menu-toggle">
+                                    <Toggle
+                                        checked={selectedReference?.novelAiFeaturePromptEnabled !== false}
+                                        onChange={(novelAiFeaturePromptEnabled) => updateCharacterReference(selectedCharacter.id, { novelAiFeaturePromptEnabled })}
+                                        className="settings-toggle-control"
+                                    />
+                                </span>
+                            </div>
+                        )}
+
                         {settings.provider !== "novelai" && (
                             <div className="flex gap-2">
                                 <button

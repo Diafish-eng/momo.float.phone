@@ -25,7 +25,26 @@
           -webkit-user-select: none;
           user-select: none;
           -webkit-touch-callout: none;
-        }
+}
+
+/* 剧情目录：自定义图床头像、最近聊天日期与导出按钮 */
+.story-custom-avatar{display:block;width:44px;height:44px;border-radius:14px;overflow:hidden;background:rgba(148,163,184,.15)}
+.story-custom-avatar.is-large{width:100%;height:100%;border-radius:inherit}
+.story-custom-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.story-owner-avatar-card{display:flex;align-items:center;gap:10px}
+.story-owner-avatar-preview{flex:0 0 auto}
+.story-owner-avatar-pick{min-width:0;flex:1;border:0;background:transparent;color:var(--c-story-text,#334155);display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left}
+.story-owner-avatar-pick>span{min-width:0;display:flex;flex-direction:column;gap:4px}
+.story-owner-avatar-pick strong{font-size:calc(12px*var(--app-text-scale,1))}
+.story-owner-avatar-pick small{color:var(--c-story-sub,#94a3b8);font-size:calc(9.5px*var(--app-text-scale,1))}
+.story-owner-avatar-reset{flex:0 0 auto;border:0;border-radius:9px;padding:7px 8px;background:rgba(148,163,184,.1);color:var(--c-story-sub,#64748b);font:500 calc(9px*var(--app-text-scale,1))/1 var(--story-font)}
+.story-directory-date{display:block;margin-top:3px;opacity:.72}
+.story-branch-export{flex:0 0 auto;width:31px;height:31px;display:grid;place-items:center;border:0;border-radius:9px;background:var(--c-story-panel,rgba(148,163,184,.10));color:var(--c-story-text,#475569)}
+.story-quick-story-backdrop{z-index:340}
+.story-quick-story-question{margin:4px 0 0;font-size:15px;line-height:1.65;color:var(--c-story-text,#334155)}
+.story-mini-phone-group-select{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(148,163,184,.16);font-size:11px;color:#64748b}
+.story-mini-phone-group-select select{min-width:0;flex:1;border:1px solid rgba(148,163,184,.22);border-radius:8px;padding:6px 8px;background:#fff;color:#334155}
+.story-mini-phone-group-empty{margin:0;padding:10px 12px;border-bottom:1px solid rgba(148,163,184,.16);font-size:11px;color:#b45309;background:#fffbeb}
 
         /* 顶部/底部光晕点缀，制造空气感 */
         .story-app-shell::before {
@@ -1602,7 +1621,8 @@
         .story-directory-open strong,.story-directory-open input { font:600 calc(12px*var(--app-text-scale,1))/1.3 var(--story-font); }
         .story-directory-open input { width:100%; min-width:0; border:0; outline:0; padding:0; background:transparent; color:inherit; }
         .story-directory-open small { color:var(--c-story-sub,#94a3b8); font-size:calc(9px*var(--app-text-scale,1)); white-space:normal; }
-        .story-branch-memory { max-width:78px; margin-right:4px; padding:6px 7px; border:0; border-radius:9px; background:rgba(148,163,184,.12); color:var(--c-story-sub,#64748b); font:500 calc(8.5px*var(--app-text-scale,1))/1.25 var(--story-font); }
+        .story-directory-actions { display:flex; align-items:center; gap:5px; padding-right:4px; white-space:nowrap; }
+        .story-branch-memory { padding:7px 8px; border:0; border-radius:9px; background:rgba(148,163,184,.12); color:var(--c-story-sub,#64748b); white-space:nowrap; font:500 calc(8.5px*var(--app-text-scale,1))/1.15 var(--story-font); }
         .story-dialog-backdrop { position:absolute; inset:0; z-index:470; padding:max(18px,env(safe-area-inset-top,0px)) 15px max(18px,env(safe-area-inset-bottom,0px)); background:rgba(15,23,42,.38); backdrop-filter:blur(5px); display:flex; align-items:center; justify-content:center; }
         .story-dialog { width:min(100%,520px); max-height:min(84vh,720px); overflow-y:auto; padding:20px; border-radius:24px; background:var(--c-story-card,#fff); color:var(--c-story-text,#334155); box-shadow:0 24px 80px rgba(15,23,42,.3); -webkit-overflow-scrolling:touch; }
         .story-dialog > header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
@@ -1621,7 +1641,8 @@
           .story-book-hero { grid-template-columns:94px minmax(0,1fr); gap:14px; }
           .story-book-cover { width:94px; }
           .story-directory { padding:14px 10px; }
-          .story-directory-row { grid-template-columns:23px minmax(0,1fr); }
-          .story-branch-memory { grid-column:2; justify-self:start; margin:0 0 8px 8px; }
+          .story-directory-row { grid-template-columns:23px minmax(0,1fr) auto; }
+          .story-directory-actions { gap:3px; padding-right:1px; }
+          .story-branch-memory { padding:6px 5px; font-size:calc(7.5px*var(--app-text-scale,1)); }
           .story-group-picker { grid-template-columns:1fr; }
         }

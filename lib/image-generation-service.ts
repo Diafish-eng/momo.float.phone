@@ -774,8 +774,11 @@ export async function generateImageFromConfiguredApi(params: {
 
     const positiveParts: string[] = [];
     if (activePreset.positivePrompt?.trim()) positiveParts.push(activePreset.positivePrompt.trim());
-    const characterFeaturePrompt = params.characterId
-      ? settings.characterReferences?.[params.characterId]?.featurePrompt?.trim()
+    const novelAiCharacterReference = params.characterId
+      ? settings.characterReferences?.[params.characterId]
+      : undefined;
+    const characterFeaturePrompt = novelAiCharacterReference?.novelAiFeaturePromptEnabled !== false
+      ? novelAiCharacterReference?.featurePrompt?.trim()
       : "";
     if (characterFeaturePrompt) positiveParts.push(characterFeaturePrompt);
     if (description) positiveParts.push(description);

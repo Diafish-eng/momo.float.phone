@@ -266,6 +266,15 @@ const RICH_PATTERNS: {
         regex: /\[我向[^\]]+发起了视频通话\]/,
         build: () => ({ content: "", mediaType: "video_call" as const }),
     },
+    {
+        // 私聊角色主动发起线下见面邀请。固定标记不展示，转为可交互卡片。
+        regex: /\[(?:线下见面邀请|邀请线下见面|邀请见面)\]/,
+        build: () => ({
+            content: "他想邀请你见面，是否同意？",
+            mediaType: "meeting_invite" as const,
+            mediaData: { meetingInviteStatus: "pending" as const },
+        }),
+    },
     // 群聊带主语宾语的格式（优先匹配）
     {
         regex: /\[([^\]]+)领取了([^\]]+)的红包\]/,
