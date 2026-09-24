@@ -17,13 +17,17 @@ const MARK_RE = /〔([^〔〕\r\n]{1,48})〕/g;
 /** 兼容：角色偶尔直接写出 Minimax 原生停顿 <#0.5#> */
 const MINIMAX_PAUSE_RE = /<#\s*\d{1,2}(?:\.\d{1,2})?\s*#>/g;
 
+/** 直接写成原生写法的官方标签（Minimax 语气词 / 情绪词、Fish S1 标签），显示时也一并隐藏 */
+const NATIVE_TAG_RE = /[(（]\s*(laughs|chuckle|coughs|clear-throat|groans|breath|pant|inhale|exhale|gasps|sniffs|sighs|snorts|burps|lip-smacking|humming|hissing|emm|whistles|sneezes|crying|applause|whisper|whispering|fluent|happy|sad|angry|fearful|disgusted|surprised|calm|neutral|excited|nervous|confident|satisfied|delighted|scared|worried|upset|frustrated|depressed|empathetic|embarrassed|moved|proud|relaxed|grateful|curious|sarcastic|disdainful|unhappy|anxious|hysterical|indifferent|uncertain|doubtful|confused|disappointed|regretful|guilty|ashamed|jealous|envious|hopeful|optimistic|pessimistic|nostalgic|lonely|bored|contemptuous|sympathetic|compassionate|determined|resigned|in a hurry tone|shouting|screaming|soft tone|laughing|chuckling|sobbing|crying loudly|sighing|groaning|panting|gasping|yawning|snoring|audience laughing|background laughter|crowd laughing|break|long-break)\s*[)）]/gi;
+
 /** 给用户看的文字：去掉所有语音标记 */
 export function stripTtsMarkup(text: string): string {
     if (!text) return text;
-    if (!text.includes("〔") && !text.includes("<#")) return text;
+    if (!text.includes("〔") && !text.includes("<#") && !/[(（]/.test(text)) return text;
     return text
         .replace(MARK_RE, "")
         .replace(MINIMAX_PAUSE_RE, "")
+        .replace(NATIVE_TAG_RE, "")
         .replace(/[ \t\u3000]{2,}/g, " ")
         .replace(/^[ \t\u3000]+|[ \t\u3000]+$/gm, "");
 }
@@ -82,7 +86,7 @@ function normTag(raw: string): string {
         "groan": "groaning", "groans": "groaning", "sniff": "sniffs", "sniffing": "sniffs", "snort": "snorts", "snorting": "snorts",
         "burp": "burps", "hum": "humming", "hiss": "hissing", "hmm": "emm", "um": "emm", "uh": "emm", "sneeze": "sneezes", "sneezing": "sneezes",
         "whisper": "whispering", "shout": "shouting", "scream": "screaming", "yawn": "yawning", "cry": "sobbing", "crying": "sobbing",
-        "sob": "sobbing", "breathing": "breath", "inhales": "inhale", "exhales": "exhale", "soft": "soft tone",
+        "sob": "sobbing", "breathing": "breath", "whistle": "whistles", "whistling": "whistles", "clap": "applause", "clapping": "applause", "inhales": "inhale", "exhales": "exhale", "soft": "soft tone",
     };
     return EN_ALIASES[low] || low;
 }
@@ -112,14 +116,16 @@ const FISH_S1_TAGS = new Set([
     "audience laughing", "background laughter", "crowd laughing", "break", "long-break",
 ]);
 
-/** Minimax speech-2.8 支持的 19 个语气词（官方列表） */
+/** Minimax speech-2.8 支持的 22 个语气词（官方列表） */
 const MINIMAX_INTERJECTIONS: Record<string, string> = {
     "laughing": "(laughs)", "chuckling": "(chuckle)", "coughs": "(coughs)", "clear throat": "(clear-throat)",
     "groaning": "(groans)", "breath": "(breath)", "panting": "(pant)", "inhale": "(inhale)", "exhale": "(exhale)",
     "gasping": "(gasps)", "sniffs": "(sniffs)", "sighing": "(sighs)", "snorts": "(snorts)", "burps": "(burps)",
     "lip-smacking": "(lip-smacking)", "humming": "(humming)", "hissing": "(hissing)", "emm": "(emm)", "sneezes": "(sneezes)",
-    // Minimax 没有的声音，挑最接近的
-    "sobbing": "(sniffs)", "crying loudly": "(sniffs)", "yawning": "(exhale)",
+    "whistles": "(whistles)", "crying": "(crying)", "applause": "(applause)",
+    "sobbing": "(crying)", "crying loudly": "(crying)",
+    // Minimax 没有打哈欠，用长呼气代替
+    "yawning": "(exhale)",
 };
 
 /** 情绪标签 → Minimax voice_setting.emotion */
@@ -132,6 +138,7 @@ const MINIMAX_EMOTION_OF: Record<string, string> = {
     scared: "fearful", nervous: "fearful", anxious: "fearful", worried: "fearful", terrified: "fearful", uncertain: "fearful",
     disgusted: "disgusted", contemptuous: "disgusted", disdainful: "disgusted", sarcastic: "disgusted",
     surprised: "surprised", confused: "surprised", doubtful: "surprised",
+    whispering: "whisper", whisper: "whisper", "soft tone": "whisper",
     calm: "calm", relaxed: "calm", indifferent: "calm", bored: "calm", determined: "calm", pessimistic: "calm",
     fearful: "fearful", neutral: "neutral",
 };
