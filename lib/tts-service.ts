@@ -2,6 +2,7 @@
 
 import type { VoiceApiConfig, ContentAppId } from "./settings-types";
 import { loadVoiceConfigs, loadBindingConfig, resolveBinding } from "./settings-storage";
+import { prepareSpeechText } from "./tts-markup";
 
 export type VoiceApiConfigResolved = VoiceApiConfig;
 
@@ -35,9 +36,14 @@ export async function synthesizeSpeech(
     if (!text.trim()) return null;
 
     const provider = voiceConfig.provider;
+    // 〔语气/情绪/停顿〕标记：Fish 换成 [tag]/(tag)，MiniMax 换成 <#秒#>、情绪参数和语气词，其它服务商去掉。
+    // 标记本身永远不会被念出来；没有标记时文字原样不动。
+    const prepared = prepareSpeechText(text, provider, voiceConfig.model);
+    text = prepared.text;
+    if (!text.trim()) return null;
 
     if (provider === "Minimax") {
-        return synthesizeMinimax(text, voiceConfig, options?.emotion);
+        return synthesizeMinimax(text, voiceConfig, options?.emotion || prepared.emotion);
     }
 
     if (provider === "OpenAI") {
