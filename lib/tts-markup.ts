@@ -129,6 +129,11 @@ function normTag(raw: string): string {
     return EN_ALIASES[low] || low;
 }
 
+/** 去掉强弱前缀（slightly / very / extremely 等），拿到基础标签，用于查情绪 / 语气词表 */
+function baseTag(tag: string): string {
+    return tag.replace(/^(?:slightly|very|extremely|a little|a bit|somewhat|really|so)\s+/i, "").trim();
+}
+
 /** 停顿标记 → 秒数；不是停顿返回 null */
 function pauseSeconds(raw: string): number | null {
     const m = raw.trim().match(PAUSE_RE);
@@ -235,7 +240,13 @@ export function prepareSpeechText(text: string, provider: string, model?: string
                 const sec = pauseSeconds(raw);
                 if (sec !== null) return wrap(sec >= 0.8 ? "long-break" : "break");
                 const tag = normTag(raw).replace(/[[\]()]/g, "");
-                if (s1) return FISH_S1_TAGS.has(tag) ? `(${tag})` : "";
+                if (s1) {
+                    // S1 只认官方固定标签，不支持强弱/自由描述：认识的用，带强弱的退回基础情绪，都不认就丢
+                    if (FISH_S1_TAGS.has(tag)) return `(${tag})`;
+                    const base = baseTag(tag);
+                    return FISH_S1_TAGS.has(base) ? `(${base})` : "";
+                }
+                // S2 / S2.1 支持自由描述，强弱词、描述原样保留
                 return `[${tag}]`;
             });
         return { text: tidy(out).trim() };
@@ -253,9 +264,11 @@ export function prepareSpeechText(text: string, provider: string, model?: string
                 const sec = pauseSeconds(raw);
                 if (sec !== null) return PAUSE(sec);
                 const tag = normTag(raw);
-                const emo = MINIMAX_EMOTION_OF[tag];
+                const base = baseTag(tag);
+                const emo = MINIMAX_EMOTION_OF[tag] || MINIMAX_EMOTION_OF[base];
                 if (emo) { if (!emotion) emotion = emo; return ""; }
-                if (interjections && MINIMAX_INTERJECTIONS[tag]) return MINIMAX_INTERJECTIONS[tag];
+                const inter = MINIMAX_INTERJECTIONS[tag] || MINIMAX_INTERJECTIONS[base];
+                if (interjections && inter) return inter;
                 return "";
             });
         return { text: tidy(placeMinimaxPauses(out)).trim(), emotion };
