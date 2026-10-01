@@ -17,8 +17,10 @@ import { findUserAvatarChangeIntent, inferAvatarDecisionFromReply } from "./chat
 
 export const DEFAULT_VISION_IMAGE_PROMPT_LIMIT = 1;
 export const MAX_VISION_IMAGE_PROMPT_LIMIT = 20;
-export const CHAT_INITIAL_VISIBLE_MESSAGE_COUNT = 50;
-export const CHAT_LOAD_MORE_MESSAGE_COUNT = 30;
+// Lowered from 50/30 to reduce in-DOM message (and image) count, easing WKWebView
+// memory pressure / crashes on data-heavy accounts. Older messages still load on scroll.
+export const CHAT_INITIAL_VISIBLE_MESSAGE_COUNT = 18;
+export const CHAT_LOAD_MORE_MESSAGE_COUNT = 12;
 
 export function normalizeVisionImagePromptLimit(value: unknown): number {
     if (value === undefined || value === null || value === "") return DEFAULT_VISION_IMAGE_PROMPT_LIMIT;
