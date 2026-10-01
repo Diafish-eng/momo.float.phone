@@ -47,6 +47,12 @@ export type ChatSession = {
     userAvatarOverride?: string;
     /** 用户更换当前会话头像后是否通知角色。未设置时默认开启 */
     notifyCharacterOnUserAvatarChange?: boolean;
+    /** 角色给用户设置的私聊备注；会显示在“查手机”的真实私聊列表中。 */
+    characterRemarkForUser?: string;
+    /** 角色给用户备注的最后更新时间。 */
+    characterRemarkForUserUpdatedAt?: string;
+    /** 用户修改“给TA备注”后是否立即通知角色并触发回应；默认关闭。 */
+    notifyCharacterOnAliasChange?: boolean;
     autoReplied?: boolean; // Whether the initial greeting auto-reply has been triggered
     alias?: string;
     videoBackground?: string;
@@ -223,6 +229,12 @@ export type ChatMessage = {
         meetingInviteStatus?: "pending" | "accepted" | "declined";
         meetingInviteCharacterId?: string;
         meetingInviteCharacterName?: string;
+        /** 角色本轮输出的邀请卡片原始字段，交给自定义 HTML 灵活渲染。 */
+        meetingInviteRaw?: string;
+        meetingInviteTitle?: string;
+        meetingInviteDescription?: string;
+        meetingInviteAcceptResponse?: string;
+        meetingInviteDeclineResponse?: string;
         meetingInviteResolvedAt?: string;
         meetingInviteStorySessionId?: string;
         fileType?: "audio" | "image" | "video" | "file";
@@ -255,6 +267,10 @@ export type ChatMessage = {
         appHistoryRole?: ChatMessageRole;
         avatarRecommendationForCharacterId?: string;
         avatarRecommendationStatus?: "pending" | "accepted" | "declined";
+        /** 内部系统事件只在聊天流里显示一条小横条，不展示完整系统指令卡片。 */
+        compactSystemInstruction?: boolean;
+        /** 该内部系统事件需要作为私聊短期事件进入统一记忆时间线。 */
+        shortTermMemoryEvent?: boolean;
     };
     isTyping?: boolean; // temporary flag for UI rendering
     statusPanel?: string; // AI display-only status content from [状态栏] tags
@@ -293,9 +309,17 @@ export type MeetingInviteCardConfig = {
     previewRaw: string;
 };
 
-export const DEFAULT_MEETING_INVITE_CONTRACT = "当你确实希望与用户线下见面时，在自然回复末尾另起一行输出 [线下见面邀请]。不要频繁邀请，每轮最多一次。";
+export const DEFAULT_MEETING_INVITE_CONTRACT = [
+    "当你确实希望与用户线下见面时，才输出一张邀请卡片；不要机械邀请，不要频繁邀请，每轮最多一次。",
+    "卡片内容必须结合当前语境与人设填写，按下面格式逐行输出：",
+    "邀请人=<你的名字>",
+    "标题=<你给用户的邀请标题>",
+    "说明=<本次见面的具体说明>",
+    "同意反应=<用户同意后你会说的话>",
+    "拒绝反应=<用户拒绝后你会说的话>",
+].join("\n");
 
-export const DEFAULT_MEETING_INVITE_PREVIEW = "邀请人=char\n标题=char想邀请你见面，是否同意？\n说明=同意后会自动建立新的剧情分线，并从这次见面开始。\n状态=pending";
+export const DEFAULT_MEETING_INVITE_PREVIEW = "邀请人=江来汛\n标题=江来汛给你递来了一张心动邀请函💌\n说明=就在楼下车里，暖气打好了，想抱抱你、亲亲你，顺便带你吃宵夜\n同意反应=算你有良心！赶紧套好外套下楼，副驾驶已经给你留好了，抱不到五分钟谁也别想走！\n拒绝反应=宝宝你耍我呢……小狗真要在车里冻死了，你真忍心看我一个人在这受冻啊？\n状态=pending";
 
 export const DEFAULT_MEETING_INVITE_RENDER = `<style>
 *{box-sizing:border-box}body{margin:0;background:transparent;color:#47382d;font:13px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}.card{padding:16px;border-radius:16px;background:linear-gradient(145deg,#fffaf2,#fff);border:1px solid rgba(160,120,76,.18);box-shadow:0 8px 24px rgba(82,58,34,.10)}.eyebrow{font-size:10px;letter-spacing:.16em;opacity:.56;margin-bottom:8px}.title{display:block;font-size:15px;line-height:1.45}.desc{margin:7px 0 14px;font-size:12px;opacity:.65}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions button{border-radius:10px;padding:9px 8px;font:inherit}.decline{border:1px solid rgba(71,56,45,.16);background:rgba(255,255,255,.72);color:inherit}.accept{border:0;background:#4b4038;color:#fff}.result{font-size:12px;opacity:.72}
@@ -303,7 +327,7 @@ export const DEFAULT_MEETING_INVITE_RENDER = `<style>
 <section class="card"><div class="eyebrow">OFFLINE INVITATION</div><strong id="title" class="title"></strong><p id="desc" class="desc"></p><div id="actions" class="actions"><button class="decline" data-meeting-action="decline">不同意（不要见面）</button><button class="accept" data-meeting-action="accept">同意</button></div><div id="result" class="result" hidden></div></section>
 <script>
 const data={};for(const line of (window.STATUS_RAW||'').split(/\\n+/)){const i=line.indexOf('=');if(i>0)data[line.slice(0,i).trim()]=line.slice(i+1).trim()}
-document.getElementById('title').textContent=data['标题']||'他想邀请你见面，是否同意？';document.getElementById('desc').textContent=data['说明']||'';const status=data['状态']||'pending';if(status!=='pending'){document.getElementById('actions').hidden=true;const result=document.getElementById('result');result.hidden=false;result.textContent=status==='accepted'?'已同意，正在进入见面剧情':'已选择不见面'}
+document.getElementById('title').textContent=data['标题']||((data['邀请人']||'他')+'想邀请你见面，是否同意？');document.getElementById('desc').textContent=data['说明']||'';const status=data['状态']||'pending';if(status!=='pending'){document.getElementById('actions').hidden=true;const result=document.getElementById('result');result.hidden=false;result.textContent=status==='accepted'?(data['同意反应']||'已同意，正在进入见面剧情'):(data['拒绝反应']||'已选择不见面')}
 </script>`;
 
 export function resolveMeetingInviteCardConfig(settings?: ChatAppSettings): MeetingInviteCardConfig {
@@ -536,6 +560,24 @@ export function isSystemInstructionMessage(msg: Pick<ChatMessage, "role" | "medi
     return msg.role === "system" && msg.mediaType === "system_instruction";
 }
 
+const HIDDEN_SYSTEM_INSTRUCTION_RE = /<hidden-system>([\s\S]*?)<\/hidden-system>/gi;
+
+/** 系统事件在聊天界面中可见的小横条文案；隐藏标签中的提示词绝不渲染。 */
+export function getSystemInstructionDisplayContent(content: string): string {
+    return content.replace(HIDDEN_SYSTEM_INSTRUCTION_RE, "").replace(/\n{2,}/g, "\n").trim();
+}
+
+/** 取出供角色与短期记忆读取的详细内容；有隐藏标签时不重复带上外层展示文案。 */
+export function getSystemInstructionPromptContent(content: string): string {
+    const hidden: string[] = [];
+    content.replace(HIDDEN_SYSTEM_INSTRUCTION_RE, (_full, body: string) => {
+        const normalized = body.trim();
+        if (normalized) hidden.push(normalized);
+        return "";
+    });
+    return hidden.length > 0 ? hidden.join("\n") : content.trim();
+}
+
 export function getChatMessagePreview(msg: ChatMessage): string {
     if (isReadingDiscussMessage(msg)) return "";
 
@@ -555,7 +597,8 @@ export function getChatMessagePreview(msg: ChatMessage): string {
         return "[记忆写入申请]";
     }
     if (isSystemInstructionMessage(msg)) {
-        const content = msg.content.trim();
+        const content = getSystemInstructionDisplayContent(msg.content);
+        if (msg.mediaData?.compactSystemInstruction) return content;
         return content ? `[系统指令] ${content}` : "[系统指令]";
     }
 

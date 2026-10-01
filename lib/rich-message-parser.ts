@@ -38,6 +38,8 @@ export interface ParsedAIResponse {
     freshStateValues: StateValue[];
     statusPanel: string;
     innerMonologue: string;
+    /** 角色在回复中主动设置的“TA 给用户的备注”；控制标记本身不展示。 */
+    characterRemarkForUser?: string;
 }
 
 // ── Rich-media patterns (non-global, for single match with index) ──
@@ -568,6 +570,67 @@ function extractBracketBlock(text: string, tag: string): { cleaned: string; cont
     return { cleaned, content };
 }
 
+type MeetingInviteExtraction = {
+    cleaned: string;
+    raw: string;
+    fields: Record<string, string>;
+};
+
+function parseMeetingInviteFields(raw: string): Record<string, string> {
+    const fields: Record<string, string> = {};
+    for (const line of raw.split(/\r?\n/)) {
+        const match = line.match(/^\s*([^=：:]{1,30})\s*[=：:]\s*(.*?)\s*$/);
+        if (!match) continue;
+        const key = match[1].trim();
+        const value = match[2].trim();
+        if (key && value) fields[key] = value;
+    }
+    return fields;
+}
+
+/**
+ * 邀请卡片与自定义状态栏一样保存“原始字段 → HTML 渲染”。
+ * 自定义字段使用不可见的 [邀请见面] 包裹稳定识别；默认五字段格式也允许裸输出，
+ * 兼容用户直接给模型看的示例，不要求把控制标签展示在聊天中。
+ */
+function extractMeetingInvite(text: string): MeetingInviteExtraction {
+    let raw = "";
+    let cleaned = text;
+    const wrapped = /\[(?:邀请见面|线下见面邀请)\]([\s\S]*?)\[\/(?:邀请见面|线下见面邀请)\]/i.exec(cleaned);
+    if (wrapped) {
+        raw = wrapped[1].trim();
+        cleaned = `${cleaned.slice(0, wrapped.index)}${cleaned.slice(wrapped.index + wrapped[0].length)}`.trim();
+        return { cleaned, raw, fields: parseMeetingInviteFields(raw) };
+    }
+
+    const lines = cleaned.split(/\r?\n/);
+    const start = lines.findIndex(line => /^\s*邀请人\s*[=：:]/.test(line));
+    if (start < 0) return { cleaned, raw: "", fields: {} };
+
+    let end = start;
+    const block: string[] = [];
+    for (let index = start; index < lines.length; index += 1) {
+        const line = lines[index];
+        if (!line.trim()) {
+            if (block.length > 0) block.push(line);
+            end = index + 1;
+            continue;
+        }
+        if (!/^\s*[^=：:\n]{1,30}\s*[=：:]\s*/.test(line)) break;
+        block.push(line);
+        end = index + 1;
+    }
+    raw = block.join("\n").trim();
+    const fields = parseMeetingInviteFields(raw);
+    // 裸格式必须满足默认核心字段，避免把普通聊天里的“邀请人=”误判为卡片。
+    if (!fields["标题"] || !fields["说明"] || !fields["同意反应"] || !fields["拒绝反应"]) {
+        return { cleaned, raw: "", fields: {} };
+    }
+    lines.splice(start, end - start);
+    cleaned = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    return { cleaned, raw, fields };
+}
+
 // ── Segment parser ──────────────────────────────────────
 
 /**
@@ -605,6 +668,8 @@ function parseSegment(segment: string, parts: ParsedMessagePart[]) {
 export function parseAIResponse(rawText: string, previousState: StateValue[]): ParsedAIResponse {
     const acceptedAvatarRecommendation = /[\[【]\s*接受头像推荐\s*[\]】]/.test(rawText);
     const declinedAvatarRecommendation = /[\[【]\s*拒绝头像推荐\s*[\]】]/.test(rawText);
+    const characterRemarkMatch = rawText.match(/[\[【]\s*(?:给用户备注|给你备注|用户备注)\s*[：:]\s*([^\]】\n]{1,40})\s*[\]】]/);
+    const characterRemarkForUser = characterRemarkMatch?.[1]?.trim();
     // 0. FIRST: extract ```html blocks and <style>+HTML before any processing
     const htmlBlockPlaceholders: { placeholder: string; original: string }[] = [];
     let protected_ = rawText;
@@ -639,14 +704,18 @@ export function parseAIResponse(rawText: string, previousState: StateValue[]): P
     const parsedSV = parseStateValues(protected_);
     const stateValues = mergeStateValues(previousState, parsedSV.stateValues);
 
+    const meetingInvite = extractMeetingInvite(parsedSV.cleanText);
+
     // 1.5. Strip AI hallucination XML/bracket action shells
-    let actionCleaned = stripActionShells(parsedSV.cleanText)
+    let actionCleaned = stripActionShells(meetingInvite.cleaned)
         .replace(/[\[【]\s*(?:接受|拒绝)头像推荐\s*[\]】]/g, "")
+        .replace(/[\[【]\s*(?:给用户备注|给你备注|用户备注)\s*[：:]\s*[^\]】\n]{1,40}\s*[\]】]/g, "")
         .trim();
     // 模型只返回控制标记时也保留一条自然可见的答复；否则没有消息落库，
     // 共享消息层便无法执行这次头像选择。
     if (!actionCleaned && acceptedAvatarRecommendation) actionCleaned = "我换上了你推荐的头像。";
     if (!actionCleaned && declinedAvatarRecommendation) actionCleaned = "我想继续使用现在的头像。";
+    if (!actionCleaned && characterRemarkForUser) actionCleaned = `以后我给你的备注就是“${characterRemarkForUser}”。`;
 
     // 2. Extract display-only status panel, then inner monologue
     const status = extractBracketBlock(actionCleaned, "状态栏");
@@ -671,6 +740,21 @@ export function parseAIResponse(rawText: string, previousState: StateValue[]): P
     for (const seg of segments) {
         parseSegment(seg, parts);
     }
+    if (meetingInvite.raw) {
+        parts.push({
+            content: meetingInvite.fields["标题"] || "线下见面邀请",
+            mediaType: "meeting_invite",
+            mediaData: {
+                meetingInviteStatus: "pending",
+                meetingInviteRaw: meetingInvite.raw,
+                meetingInviteCharacterName: meetingInvite.fields["邀请人"],
+                meetingInviteTitle: meetingInvite.fields["标题"],
+                meetingInviteDescription: meetingInvite.fields["说明"],
+                meetingInviteAcceptResponse: meetingInvite.fields["同意反应"],
+                meetingInviteDeclineResponse: meetingInvite.fields["拒绝反应"],
+            },
+        });
+    }
 
     // 5. Restore HTML block placeholders and keep unknown bracket protocols as plain text.
     //    Strip tool directives (获取指令/执行动作) from display content too: a
@@ -690,5 +774,6 @@ export function parseAIResponse(rawText: string, previousState: StateValue[]): P
         freshStateValues: parsedSV.stateValues,
         statusPanel: restore(status.content),
         innerMonologue: restore(mono.content),
+        characterRemarkForUser,
     };
 }

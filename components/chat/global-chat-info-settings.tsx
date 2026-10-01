@@ -266,7 +266,7 @@ export function GlobalChatInfoSettings({ onBack }: { onBack: () => void }) {
                     </div>
                     {draftMeetingInvite.mode === "custom" ? <>
                         <label className="ts-13 font-medium text-[var(--c-text-title)]">输出契约</label>
-                        <textarea className="ui-textarea font-mono ts-12" style={{ minHeight: 130, resize: "vertical" }} value={draftMeetingInvite.contract} onChange={event => setDraftMeetingInvite(current => ({ ...current, contract: event.target.value }))} placeholder="告诉 AI 何时发起邀请；固定标记由系统兜底" />
+                        <textarea className="ui-textarea font-mono ts-12" style={{ minHeight: 130, resize: "vertical" }} value={draftMeetingInvite.contract} onChange={event => setDraftMeetingInvite(current => ({ ...current, contract: event.target.value }))} placeholder="告诉 AI 何时发起邀请，并列出卡片要填写的 key=value 字段" />
                         <label className="ts-13 font-medium text-[var(--c-text-title)]">输出渲染</label>
                         <textarea className="ui-textarea font-mono ts-12" style={{ minHeight: 210, resize: "vertical" }} value={draftMeetingInvite.renderHtml} onChange={event => setDraftMeetingInvite(current => ({ ...current, renderHtml: event.target.value }))} placeholder="完整 HTML / CSS / JS；按钮使用 data-meeting-action=accept 或 decline" />
                         <div className="flex items-center justify-between gap-2">
@@ -274,7 +274,11 @@ export function GlobalChatInfoSettings({ onBack }: { onBack: () => void }) {
                             <button type="button" className="ui-btn ui-btn-ghost h-8 w-8 p-0" onClick={() => setMeetingPreviewHtml(draftMeetingInvite.renderHtml)} aria-label="运行预览" title="运行预览"><Play size={15} /></button>
                         </div>
                         <textarea className="ui-textarea font-mono ts-12" style={{ minHeight: 100, resize: "vertical" }} value={draftMeetingInvite.previewRaw} onChange={event => setDraftMeetingInvite(current => ({ ...current, previewRaw: event.target.value }))} placeholder="可编辑的示例数据" />
-                        {meetingPreviewHtml.trim() ? <div className="rounded-2xl border border-[var(--c-card-border)] p-3 overflow-hidden"><CustomStatusFrame html={meetingPreviewHtml} raw={draftMeetingInvite.previewRaw} kind="meeting" title="邀请见面卡片预览" /></div> : null}
+                        {meetingPreviewHtml.trim() ? (
+                            <div className="rounded-2xl border border-[var(--c-card-border)] p-3" style={{ maxHeight: "55vh", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+                                <CustomStatusFrame html={meetingPreviewHtml} raw={draftMeetingInvite.previewRaw} kind="meeting" title="邀请见面卡片预览" />
+                            </div>
+                        ) : null}
                     </> : null}
                     <div className="flex gap-2 items-center">
                         <CSSSchemeBar target="meeting_invite_card" currentCSS={meetingInvitePayload} onLoad={loadMeetingInvitePayload} />

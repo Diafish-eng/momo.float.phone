@@ -180,15 +180,24 @@ function MeetingInviteBubble({
     onAction?: (msg: ChatMessage, action: "accept" | "decline") => void;
 }) {
     const status = msg.mediaData?.meetingInviteStatus || "pending";
-    const resolvedLabel = status === "accepted" ? "已同意，正在进入见面剧情" : "已选择不见面";
     const config = resolveMeetingInviteCardConfig(loadChatAppSettings());
     const inviter = msg.mediaData?.meetingInviteCharacterName || charName || "他";
+    const title = msg.mediaData?.meetingInviteTitle || `${inviter}想邀请你见面，是否同意？`;
+    const description = msg.mediaData?.meetingInviteDescription || "同意后会自动建立新的剧情分线，并从这次见面开始。";
+    const acceptResponse = msg.mediaData?.meetingInviteAcceptResponse || "已同意，正在进入见面剧情";
+    const declineResponse = msg.mediaData?.meetingInviteDeclineResponse || "已选择不见面";
+    const resolvedLabel = status === "accepted" ? acceptResponse : declineResponse;
+    const storedRaw = msg.mediaData?.meetingInviteRaw?.trim();
     const raw = [
-        `邀请人=${inviter}`,
-        `标题=${inviter}想邀请你见面，是否同意？`,
-        "说明=同意后会自动建立新的剧情分线，并从这次见面开始。",
+        storedRaw || [
+            `邀请人=${inviter}`,
+            `标题=${title}`,
+            `说明=${description}`,
+            `同意反应=${acceptResponse}`,
+            `拒绝反应=${declineResponse}`,
+        ].join("\n"),
         `状态=${status}`,
-    ].join("\n");
+    ].join("\n").replace(/^状态\s*[=：:].*$/gm, "").replace(/\n{2,}/g, "\n").trim() + `\n状态=${status}`;
     if (config.mode === "custom" && config.renderHtml.trim()) {
         return (
             <section className="meeting-invite-custom-card" style={{ width: 250, maxWidth: "72vw" }}>
@@ -206,8 +215,8 @@ function MeetingInviteBubble({
         <section className="meeting-invite-card" data-status={status}>
             <style>{`.meeting-invite-card{width:250px;max-width:72vw;padding:16px;border-radius:16px;background:linear-gradient(145deg,#fffaf2,#fff);border:1px solid rgba(160,120,76,.18);box-shadow:0 8px 24px rgba(82,58,34,.10);color:#47382d}.meeting-invite-eyebrow{font-size:11px;letter-spacing:.16em;opacity:.56;margin-bottom:8px}.meeting-invite-title{display:block;font-size:15px;line-height:1.45}.meeting-invite-desc{margin:7px 0 14px;font-size:12px;opacity:.65}.meeting-invite-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.meeting-invite-actions button{border-radius:10px;padding:9px 8px}.meeting-invite-decline{border:1px solid rgba(71,56,45,.16);background:rgba(255,255,255,.72);color:inherit}.meeting-invite-accept{border:0;background:#4b4038;color:#fff}.meeting-invite-result{padding-top:3px;font-size:12px;opacity:.72}`}</style>
             <div className="meeting-invite-eyebrow">OFFLINE INVITATION</div>
-            <strong className="meeting-invite-title">{charName || "他"}想邀请你见面，是否同意？</strong>
-            <p className="meeting-invite-desc">同意后会自动建立新的剧情分线，并从这次见面开始。</p>
+            <strong className="meeting-invite-title">{title}</strong>
+            <p className="meeting-invite-desc">{description}</p>
             {status === "pending" ? (
                 <div className="meeting-invite-actions">
                     <button type="button" className="meeting-invite-decline" onClick={() => onAction?.(msg, "decline")}>不同意（不要见面）</button>

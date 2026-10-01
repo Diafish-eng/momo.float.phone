@@ -779,9 +779,9 @@ const READ_MEETING_INVITE_SCHEMA = {
 const WRITE_MEETING_INVITE_SCHEMA = {
     type: "object",
     properties: {
-        contract: { type: "string", description: "邀请触发规则。应说明角色按语境自主邀请，并在自然回复末尾输出固定标记 [线下见面邀请]。" },
+        contract: { type: "string", description: "邀请触发与字段输出规则。应说明角色按语境自主邀请，并列出希望角色填写的 key=value 字段；系统会自动加不可见的 [邀请见面] 包裹。" },
         renderHtml: { type: "string", description: "完整 HTML/CSS/JS。用 window.STATUS_RAW 或 {{RAW}} 读取示例数据；同意/拒绝按钮必须分别带 data-meeting-action=\"accept\" 和 data-meeting-action=\"decline\"。" },
-        previewRaw: { type: "string", description: "预览示例数据，建议包含邀请人、标题、说明、状态=pending。" },
+        previewRaw: { type: "string", description: "预览示例数据，字段必须和契约、HTML 一致；建议包含邀请人、标题、说明、同意反应、拒绝反应、状态=pending。" },
     },
     required: ["contract", "renderHtml", "previewRaw"],
     additionalProperties: false,
@@ -807,7 +807,8 @@ const MEETING_INVITE_PROMPT = `邀请见面卡片是全局私聊功能。小卷�
 · 同意按钮必须有 data-meeting-action="accept"，拒绝按钮必须有 data-meeting-action="decline"，否则页面看起来有按钮但不能执行真实操作。
 · 不要写 100vh/100dvh；卡片高度由外层自动测量。
 · 沙盒不能访问宿主页面或发起网络请求，素材应使用可公开访问的 URL。
-· 示例数据必须与脚本解析的字段完全一致，默认建议：邀请人、标题、说明、状态=pending。
+· 示例数据必须与脚本解析的字段完全一致，默认建议：邀请人、标题、说明、同意反应、拒绝反应、状态=pending。
+· 契约只写卡片的触发逻辑和字段格式，不再要求旧的 [线下见面邀请] 单标记；系统会在发给角色时自动加 [邀请见面]...[/邀请见面] 包裹，包裹不会显示给用户。
 
 写完后告诉用户：可在“聊天 → 我的 → 全局聊天信息 → 邀请见面卡片 CSS 样式”继续修改。`;
 
@@ -2098,9 +2099,6 @@ async function handleWriteMeetingInviteCard(args: Record<string, unknown>): Prom
     if (!contract) return { name: NAME, success: false, error: "contract 不能为空" };
     if (!renderHtml) return { name: NAME, success: false, error: "renderHtml 不能为空；邀请卡片支持并需要完整 HTML/CSS/JS" };
     if (!previewRaw) return { name: NAME, success: false, error: "previewRaw 不能为空，否则无法确认卡片渲染效果" };
-    if (!contract.includes("[线下见面邀请]")) {
-        return { name: NAME, success: false, error: "触发契约必须包含固定控制标记 [线下见面邀请]，否则系统无法把回复转换成邀请卡片" };
-    }
     if (!/data-meeting-action\s*=\s*["']accept["']/i.test(renderHtml)
         || !/data-meeting-action\s*=\s*["']decline["']/i.test(renderHtml)) {
         return { name: NAME, success: false, error: "HTML 必须同时包含 data-meeting-action=\"accept\" 与 data-meeting-action=\"decline\"，否则同意/拒绝按钮无法执行" };

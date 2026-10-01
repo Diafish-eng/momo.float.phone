@@ -619,18 +619,18 @@ export function StorySettingsPage(props: StorySettingsPageProps) {
               event.target.value = "";
             }}
           />
-          <button className="story-settings-row-button" type="button" onClick={() => fontFileRef.current?.click()}>
-            <span><strong>从本机选择字体</strong><small>{props.uiPrefs.customFontDataUrl ? props.uiPrefs.customFontName || "已上传字体" : "支持 TTF / OTF / WOFF / WOFF2，最大 8MB"}</small></span>
+          <button className="story-font-upload-button" type="button" onClick={() => fontFileRef.current?.click()}>
+            <span><strong>上传字体文件</strong><small>{props.uiPrefs.customFontDataUrl ? `${props.uiPrefs.customFontName || "已上传字体"} · 已自动应用` : "支持 TTF / OTF / WOFF / WOFF2，最大 8MB"}</small></span>
             <Upload size={16} />
           </button>
           <label className="story-settings-field">
             <span>字体 URL</span>
             <input value={fontUrlDraft} onChange={(event) => setFontUrlDraft(event.target.value)} placeholder="https://example.com/font.woff2" />
           </label>
-          <div className="story-settings-inline story-settings-inline-with-save">
-            <button type="button" className="story-scheme-save" onClick={applyCustomFontUrl}>应用 URL</button>
+          <div className="story-font-actions">
+            <button type="button" className="story-font-apply" onClick={applyCustomFontUrl}>应用字体 URL</button>
             {(props.uiPrefs.customFontDataUrl || props.uiPrefs.customFontUrl) ? (
-              <button type="button" onClick={() => {
+              <button type="button" className="story-font-reset" onClick={() => {
                 setFontUrlDraft("");
                 props.onUiPrefsChange({ ...props.uiPrefs, customFontDataUrl: undefined, customFontUrl: undefined, customFontName: undefined });
               }}>恢复默认字体</button>
