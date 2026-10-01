@@ -17,7 +17,6 @@ import { formatCharacterRelationsForPrompt } from "./character-world-storage";
 import { buildCharacterTimeContext, buildGroupTimeContext, type CharacterTimeContext } from "./character-time";
 import { formatShoppingPaymentRequestHistory } from "./shopping-payment-request";
 import { buildGroupAdminBracketText } from "./group-admin";
-import { ttsPresetEntryGate } from "./tts-markup";
 
 export type LLMMessageRole = "system" | "user" | "assistant" | "tool";
 export type LLMToolCallPayload = { id: string; name: string; args: Record<string, unknown>; thoughtSignature?: string };
@@ -759,12 +758,8 @@ export function assemblePromptPayload(input: AssemblerInput): LLMMessage[] {
 
             if (!isPromptEnabled(p, preset!.prompt_order)) continue;
 
-            // 语音语气标记条目（Fish / MiniMax）：只对绑定了对应语音服务商的角色注入，两者互不冲突
-            const ttsGate = p.marker ? null : ttsPresetEntryGate(p.identifier, activeTags, [character.id]);
-            if (ttsGate === false) continue;
-
             // Tag-based filtering: entry's tags must ALL be present in activeTags
-            if (filterEnabled && !p.marker && ttsGate === null) {
+            if (filterEnabled && !p.marker) {
                 const entryTags = getPromptTags(p);
                 if (entryTags && !entryTags.every(t => activeTags.includes(t))) continue;
             }
@@ -2041,12 +2036,8 @@ export function assembleGroupPromptPayload(input: GroupAssemblerInput): LLMMessa
 
             if (!isPromptEnabled(p, preset!.prompt_order)) continue;
 
-            // 语音语气标记条目：群里至少有一位成员绑定了对应语音服务商才注入
-            const gcTtsGate = p.marker ? null : ttsPresetEntryGate(p.identifier, activeTags, members.map(m => m.character.id));
-            if (gcTtsGate === false) continue;
-
             const gcTags = getPromptTags(p);
-            if (gcTtsGate === null && gcTags && !gcTags.every(t => activeTags.includes(t))) continue;
+            if (gcTags && !gcTags.every(t => activeTags.includes(t))) continue;
 
             if (p.marker) {
                 // Skip markers (handled in <member> blocks or at group level)

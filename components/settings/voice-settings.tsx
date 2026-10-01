@@ -230,7 +230,10 @@ function normalizeVoiceConfigs(configs: VoiceApiConfig[]): VoiceApiConfig[] {
                 const speechSpeed = typeof config.speechSpeed === "number" && Number.isFinite(config.speechSpeed)
                     ? Math.min(2, Math.max(0.5, config.speechSpeed))
                     : DEFAULT_SPEECH_SPEED;
-                return { ...config, speechSpeed, model: FISH_MODELS.some(m => m.id === config.model) ? config.model : "s2.1-pro" };
+                const speechPitch = typeof config.speechPitch === "number" && Number.isFinite(config.speechPitch)
+                    ? Math.min(12, Math.max(-12, Math.round(config.speechPitch)))
+                    : DEFAULT_SPEECH_PITCH;
+                return { ...config, speechSpeed, speechPitch, model: FISH_MODELS.some(m => m.id === config.model) ? config.model : "s2.1-pro" };
             }
             if (config.provider !== "Minimax") return config;
             const baseUrl = MINIMAX_BASE_URL_OPTIONS.some(option => option.baseUrl === config.baseUrl)
@@ -361,6 +364,7 @@ export function VoiceSettings() {
                 model: wasFish ? (current?.model || "s2.1-pro") : "s2.1-pro",
                 defaultVoice: wasFish ? (current?.defaultVoice || "") : "",
                 speechSpeed: wasFish ? (current?.speechSpeed ?? DEFAULT_SPEECH_SPEED) : DEFAULT_SPEECH_SPEED,
+                speechPitch: wasFish ? (current?.speechPitch ?? DEFAULT_SPEECH_PITCH) : DEFAULT_SPEECH_PITCH,
                 customVoices: wasFish ? current?.customVoices : [],
             });
             setManualVoiceIds(prev => ({ ...prev, [id]: false }));
@@ -974,6 +978,26 @@ export function VoiceSettings() {
                                                         className="w-full accent-black"
                                                         aria-label="Fish Audio 语速"
                                                     />
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center justify-between px-1">
+                                                        <label className="menu-desc">音调 (Pitch)</label>
+                                                        <span className="menu-label font-medium">{(config.speechPitch ?? DEFAULT_SPEECH_PITCH) > 0 ? "+" : ""}{config.speechPitch ?? DEFAULT_SPEECH_PITCH}</span>
+                                                    </div>
+                                                    <input
+                                                        type="range"
+                                                        min={-12}
+                                                        max={12}
+                                                        step={1}
+                                                        value={config.speechPitch ?? DEFAULT_SPEECH_PITCH}
+                                                        onChange={(e) => updateConfig(config.id, { speechPitch: Number(e.target.value) })}
+                                                        className="w-full accent-black"
+                                                        aria-label="Fish Audio 音调"
+                                                    />
+                                                    <div className="flex justify-between px-1 menu-desc">
+                                                        <span>-12</span><span>0 默认</span><span>+12</span>
+                                                    </div>
+                                                    <span className="menu-desc ml-1">单位是半音。Fish 官方没有音调参数，这里是在手机上对合成好的声音变调，语速保持不变；幅度越大越不自然，建议在 ±4 以内微调。调了音调的语音会存成 WAV，占用空间约为原来的 2 倍。</span>
                                                 </div>
                                                 <span className="menu-desc ml-1">
                                                     API Key 在 fish.audio 登录后「开发者 → API Keys」创建。音色：在 fish.audio 打开喜欢的音色页面，复制浏览器地址栏的链接粘贴到下面即可（会自动识别出 Voice ID）；也可以同步你自己克隆的音色，或按名字搜索音色库。

@@ -200,7 +200,7 @@ export function loadPresets(): PresetConfig[] {
             presets[idx] = fresh;
             savePresets(presets);
             shouldPersistCleanup = false;
-        } else if (ensureBuiltinTtsPrompts(existingBuiltin) || shouldPersistCleanup) {
+        } else if (shouldPersistCleanup) {
             savePresets(presets);
         }
 
@@ -208,36 +208,6 @@ export function loadPresets(): PresetConfig[] {
     } catch {
         return [];
     }
-}
-
-const BUILTIN_TTS_PROMPT_IDS = ["tts_fish_expression", "tts_minimax_expression"];
-
-/**
- * 给已有的内置预设补上「语音语气标记 · Fish Audio / MiniMax」两个条目（默认关闭）。
- * 只追加缺失的条目，不升 BUILTIN_PRESET_VERSION，所以用户对内置预设的自定义不会丢。
- * 返回是否有改动。
- */
-function ensureBuiltinTtsPrompts(preset: PresetConfig): boolean {
-    const missing = BUILTIN_TTS_PROMPT_IDS.filter(id => !preset.prompts.some(p => p.identifier === id));
-    if (missing.length === 0) return false;
-    const factory = createBuiltinPreset();
-    const anchorId = "chat_output_format";
-    for (const id of missing) {
-        const prompt = factory.prompts.find(p => p.identifier === id);
-        if (!prompt) continue;
-        const entry = { ...prompt, enabled: false };
-        const lastTts = [...preset.prompts].reverse().find(p => BUILTIN_TTS_PROMPT_IDS.includes(p.identifier));
-        const after = lastTts ?? preset.prompts.find(p => p.identifier === anchorId);
-        const idx = after ? preset.prompts.indexOf(after) + 1 : preset.prompts.length;
-        preset.prompts.splice(idx, 0, entry);
-        if (preset.prompt_order && !preset.prompt_order.some(o => o.identifier === id)) {
-            const orderAfter = [...preset.prompt_order].reverse().find(o => BUILTIN_TTS_PROMPT_IDS.includes(o.identifier))
-                ?? preset.prompt_order.find(o => o.identifier === anchorId);
-            const oIdx = orderAfter ? preset.prompt_order.indexOf(orderAfter) + 1 : preset.prompt_order.length;
-            preset.prompt_order.splice(oIdx, 0, { identifier: id, enabled: false });
-        }
-    }
-    return true;
 }
 
 /** Reset the built-in preset to factory defaults. */
