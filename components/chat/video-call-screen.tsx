@@ -1,6 +1,5 @@
 "use client";
 
-import { stripTtsMarkup } from "@/lib/tts-markup";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatSession, ChatMessage, loadChatMessages, pushChatMessage, getLatestCharacterStateValues, resolveChatUserAvatar } from "@/lib/chat-storage";
 import { getStatusRegionConfig, isCustomStatusRegionActive } from "@/lib/chat-status-region";
@@ -443,9 +442,8 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, initiato
             if (stateRef.current === "ENDED") return;
 
             const { cleanParts } = processAIResponse(aiResponseText);
-            let displayText = cleanParts.join("\n");
+            const displayText = cleanParts.join("\n");
             const speechText = stripBilingualForSpeech(displayText);
-            displayText = stripTtsMarkup(displayText); // 字幕里不显示〔语气〕标记，合成时保留
 
             if (!displayText) { setCallState("IDLE"); return; }
 

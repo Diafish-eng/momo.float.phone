@@ -57,7 +57,11 @@ export function ttsPresetEntryGate(
     const provider = TTS_PRESET_PROVIDER[identifier];
     if (!provider) return null;
     if (!activeTags.includes("chat") && !activeTags.includes("group_chat")) return false;
-    return characterIds.some(id => resolveVoiceProvider(id) === provider);
+    const providers = characterIds.map(resolveVoiceProvider).filter((p): p is string => !!p);
+    // 检测不到任何语音绑定时不拦截，交回条目自身的开关——避免"开了却静默不生效"。
+    if (providers.length === 0) return true;
+    // 能判断绑定：只给绑了对应服务商的放行，这样 Fish / MiniMax 两个预设互不冲突。
+    return providers.includes(provider);
 }
 
 // ── 标记识别 ──────────────────────────────────────────────────
