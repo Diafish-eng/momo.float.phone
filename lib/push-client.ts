@@ -103,6 +103,27 @@ export function isShellEnvironment(): boolean {
     return typeof navigator !== "undefined" && navigator.userAgent.includes("FloatShell/");
 }
 
+/**
+ * 壳App（FloatShell）：向个人云注册一条合成订阅（endpoint 以 shell: 开头，服务端不会对它走 Web Push），
+ * 让账号被视为"已订阅"，从而打开离线预约/生成/回传的所有门槛。幂等、失败静默。
+ * 实际"叮你一下"的交付由壳的原生后台轮询 + 本地通知负责（iOS 壳收不了 Web Push）。
+ */
+export async function ensureShellSubscription(): Promise<void> {
+    if (typeof window === "undefined" || !isShellEnvironment()) return;
+    if (!isPersonalPushCloudActive()) return;
+    try {
+        if (await hasAccountPushSubscription()) return;
+        const res = await personalPushFetch("subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: "shell:ios", keys: { p256dh: "shell", auth: "shell" } }),
+        });
+        if (res.ok) markAccountPushSubscribed(true);
+    } catch {
+        // 静默：下次启动再试
+    }
+}
+
 function isPushSupported(): boolean {
     return typeof window !== "undefined"
         && "serviceWorker" in navigator

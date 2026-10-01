@@ -1816,6 +1816,8 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
       cleanupWeixinCloudRealtimeSync = stopWeixinCloudRealtimeSync;
       // 离线推送回端合并：拉取服务端兜底生成的消息并落进聊天记录
       void import("@/lib/push-outbox-client").then(m => m.installServerOutboxConsumer()).catch(() => undefined);
+      // 壳App（FloatShell）：注册合成订阅以打开离线链路（仅壳内生效，普通浏览器无影响）。
+      void import("@/lib/push-client").then(m => m.ensureShellSubscription()).catch(() => undefined);
       // 现实桥离线联动：规则/快照同步器（规则变更、切后台时刷新服务端快照）
       void import("@/lib/push-bridge-sync").then(m => m.installBridgeServerSync()).catch(() => undefined);
       // 定时唤醒/经期关怀兜底：切后台时刷新快照预约
