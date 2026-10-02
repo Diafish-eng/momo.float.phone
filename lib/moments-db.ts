@@ -63,6 +63,20 @@ export function dbDeleteCommentsByPost(postId: string): void {
         .catch(err => console.warn("[MomentsDB] delete post comments failed:", err));
 }
 
+// ── Bulk cleanup (for "clear Moments" feature; does NOT touch memory stores) ──
+
+export function dbClearAllMoments(): void {
+    momentsDb.posts.clear().catch(err => console.warn("[MomentsDB] clear posts failed:", err));
+    momentsDb.comments.clear().catch(err => console.warn("[MomentsDB] clear comments failed:", err));
+}
+
+export function dbBulkDeletePosts(ids: string[]): void {
+    if (!ids.length) return;
+    momentsDb.posts.bulkDelete(ids).catch(err => console.warn("[MomentsDB] bulk delete posts failed:", err));
+    momentsDb.comments.where("postId").anyOf(ids).delete()
+        .catch(err => console.warn("[MomentsDB] bulk delete post comments failed:", err));
+}
+
 // ── Whole-collection replace (for the array-level save APIs) ──
 
 export function dbReplacePosts(posts: MomentPost[]): void {
