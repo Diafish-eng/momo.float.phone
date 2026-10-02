@@ -14,6 +14,8 @@ import {
     dbPutComment,
     dbDeleteComment,
     dbDeleteCommentsByPost,
+    dbClearAllMoments,
+    dbBulkDeletePosts,
 } from "./moments-db";
 
 const AI_SCHEDULE_KEY = "ai_phone_moments_ai_schedule_v1";
@@ -134,6 +136,35 @@ export function deleteMomentPost(postId: string): void {
     // Also delete all comments for this post
     _commentsCache = loadAllMomentComments().filter(c => c.postId !== postId);
     dbDeleteCommentsByPost(postId);
+}
+
+/**
+ * 批量清理朋友圈动态（含评论）。cutoffMs=null → 删全部；否则删除 createdAt 早于 cutoffMs 的旧帖。
+ * 只清朋友圈内容；角色的短期/长期记忆单独存储，不在此处，完全不受影响。
+ * 返回被删除的帖子数。
+ */
+export function deleteMomentPostsBefore(cutoffMs: number | null): number {
+    const posts = loadMomentPosts();
+    if (cutoffMs === null) {
+        const removed = posts.length;
+        _postsCache = [];
+        _commentsCache = [];
+        dbClearAllMoments();
+        return removed;
+    }
+    const removedIds: string[] = [];
+    const keep: MomentPost[] = [];
+    for (const post of posts) {
+        const t = Date.parse(post.createdAt);
+        if (Number.isFinite(t) && t < cutoffMs) removedIds.push(post.id);
+        else keep.push(post);
+    }
+    if (removedIds.length === 0) return 0;
+    _postsCache = keep;
+    const removedSet = new Set(removedIds);
+    _commentsCache = loadAllMomentComments().filter(c => !removedSet.has(c.postId));
+    dbBulkDeletePosts(removedIds);
+    return removedIds.length;
 }
 
 // ── Comments CRUD ──

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useLayoutEffect, useRef } from "react";
-import { getAllPosts, deleteMomentPost, getUnreadMomentsNotifications, saveMomentsLastSeen, addMomentComment } from "@/lib/moments-storage";
+import { getAllPosts, deleteMomentPost, deleteMomentPostsBefore, getUnreadMomentsNotifications, saveMomentsLastSeen, addMomentComment } from "@/lib/moments-storage";
 import { loadChatContacts } from "@/lib/chat-storage";
 import { resolveUserIdentity, USER_IDENTITIES_UPDATED_EVENT } from "@/lib/settings-storage";
 import { saveChatImageToIndexedDB, getChatImageFromIndexedDB } from "@/lib/chat-asset-storage";
@@ -44,6 +44,7 @@ type MomentsFeedProps = {
 export function MomentsFeed({ onCloseApp }: MomentsFeedProps) {
     const [posts, setPosts] = useState<MomentPost[]>([]);
     const [showCompose, setShowCompose] = useState(false);
+    const [showCleanup, setShowCleanup] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     // 后台生图失败：弹一次弹窗提示，关掉即消失（同时多条失败只提示第一条）
     const [photoFailureNotice, setPhotoFailureNotice] = useState<string | null>(null);
@@ -109,6 +110,15 @@ export function MomentsFeed({ onCloseApp }: MomentsFeedProps) {
         setPosts(getAllPosts().filter(p => p.authorType === "user" || contactIds.has(p.authorId)));
         setUnreadNotifs(getUnreadMomentsNotifications());
     }, []);
+
+    // 一键清理朋友圈动态（只删动态内容，角色记忆不受影响）。days=null 表示全部。
+    const handleCleanup = useCallback((days: number | null) => {
+        const cutoff = days === null ? null : Date.now() - days * 24 * 60 * 60 * 1000;
+        const removed = deleteMomentPostsBefore(cutoff);
+        setShowCleanup(false);
+        refreshPosts();
+        setPhotoFailureNotice(removed > 0 ? `已清除 ${removed} 条动态（角色记忆不受影响）` : "没有符合条件的动态可清除");
+    }, [refreshPosts]);
 
     const captureScrollAnchor = useCallback((): MomentScrollAnchorSnapshot | null => {
         const el = getScrollElement();
@@ -385,23 +395,74 @@ export function MomentsFeed({ onCloseApp }: MomentsFeedProps) {
                 onClose={() => setPhotoFailureNotice(null)}
             />
         )}
+        {showCleanup && (
+            <div className="feed-comment-modal-layer" data-ui="modal">
+                <button
+                    type="button"
+                    className="feed-comment-modal-backdrop"
+                    aria-label="关闭清理"
+                    onClick={() => setShowCleanup(false)}
+                />
+                <div className="feed-comment-modal-dialog" data-ui="modal-dialog" role="dialog" aria-modal="true" aria-label="清理朋友圈动态">
+                    <div className="feed-comment-modal-title">清理朋友圈动态</div>
+                    <div style={{ fontSize: 13, opacity: 0.65, padding: "2px 4px 12px", lineHeight: 1.5 }}>
+                        只清除朋友圈的动态和评论，<b>角色的记忆（短期/长期）不受影响</b>。清除后不可撤销。
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <button type="button" className="feed-comment-modal-cancel" onClick={() => handleCleanup(7)}>
+                            清除 7 天前的旧动态
+                        </button>
+                        <button type="button" className="feed-comment-modal-cancel" onClick={() => handleCleanup(30)}>
+                            清除 30 天前的旧动态
+                        </button>
+                        <button
+                            type="button"
+                            className="feed-comment-modal-cancel"
+                            style={{ color: "#e5484d", fontWeight: 600 }}
+                            onClick={() => { if (window.confirm("确定清除全部朋友圈动态？记忆不受影响，但动态无法恢复。")) handleCleanup(null); }}
+                        >
+                            清除全部动态
+                        </button>
+                        <button type="button" className="feed-comment-modal-cancel" onClick={() => setShowCleanup(false)}>
+                            取消
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
         <PageShell
             title="动态"
             onBack={onCloseApp}
             rightAction={
-                <button
-                    onClick={() => setShowCompose(true)}
-                    className="page-back-btn"
-                    title="发布朋友圈"
-                    type="button"
-                    aria-label="发布朋友圈"
-                >
-                    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" stroke="currentColor">
-                        <rect x="2" y="6" width="20" height="14" rx="2" />
-                        <circle cx="12" cy="13" r="4" />
-                        <path d="M8 6l1-3h6l1 3" />
-                    </svg>
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <button
+                        onClick={() => setShowCleanup(true)}
+                        className="page-back-btn"
+                        title="清理动态"
+                        type="button"
+                        aria-label="清理动态"
+                    >
+                        <svg width={22} height={22} viewBox="0 0 24 24" fill="none" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" stroke="currentColor">
+                            <path d="M3 6h18" />
+                            <path d="M8 6V4h8v2" />
+                            <path d="M6 6l1 14h10l1-14" />
+                            <path d="M10 11v6M14 11v6" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={() => setShowCompose(true)}
+                        className="page-back-btn"
+                        title="发布朋友圈"
+                        type="button"
+                        aria-label="发布朋友圈"
+                    >
+                        <svg width={22} height={22} viewBox="0 0 24 24" fill="none" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" stroke="currentColor">
+                            <rect x="2" y="6" width="20" height="14" rx="2" />
+                            <circle cx="12" cy="13" r="4" />
+                            <path d="M8 6l1-3h6l1 3" />
+                        </svg>
+                    </button>
+                </div>
             }
             className={`moments-feed-page ${headerScrolled ? "is-scrolled" : ""} ${activeComposer ? "has-comment-modal" : ""}`}
             bodyRef={scrollRef}
