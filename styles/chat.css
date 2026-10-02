@@ -1283,6 +1283,11 @@
   width: 100%;
   position: relative;
   border-radius: 8px;
+  /* Skip rendering/layout of off-screen messages to cut memory & CPU (big win on
+     long, image-heavy chats). `auto` size is remembered after first render so
+     scrolling doesn't jump. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 72px;
 }
 .chat-msg-wrapper[data-role="user"] { justify-content: flex-end; }
 .chat-msg-wrapper[data-role="assistant"] { justify-content: flex-start; }
