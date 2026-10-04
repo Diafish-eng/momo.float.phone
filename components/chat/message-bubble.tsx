@@ -911,7 +911,7 @@ function AppCardBubble({ msg, characterId, characterName }: { msg: ChatMessage; 
                 <span className="chat-app-card-name">{layout.appLabel || appName}</span>
                 {layout.status ? <span className="chat-app-card-status">{layout.status}</span> : null}
             </div>
-            {layout.image ? <img className="chat-app-card-image" src={layout.image} alt="" /> : null}
+            {layout.image ? <img className="chat-app-card-image" src={layout.image} alt="" loading="lazy" decoding="async" /> : null}
             <div className="chat-app-card-title">{title}</div>
             {subtitle ? <div className="chat-app-card-subtitle">{subtitle}</div> : null}
             {body ? <div className="chat-app-card-body">{body}</div> : null}
@@ -1440,6 +1440,8 @@ function ImageBubble({
                     <img
                         src={resolvedUrl}
                         alt={label}
+                        loading="lazy"
+                        decoding="async"
                         className="chat-photo-card-image block max-w-[240px] max-h-[320px] w-auto h-auto"
                     />
                 </div>
@@ -1634,6 +1636,8 @@ function StickerBubble({ msg, characterId }: { msg: ChatMessage; characterId?: s
                 <img
                     src={imgUrl}
                     alt={label || "表情包"}
+                    loading="lazy"
+                    decoding="async"
                     className="w-[120px] h-[120px] object-contain"
                     style={{ WebkitTouchCallout: 'none', userSelect: 'none', pointerEvents: 'none' }}
                 />
@@ -1925,7 +1929,7 @@ export function MediaImageWithPreview({
             <div className="chat-media-file-wrap">
                 <div className="chat-media-file-card chat-media-file-image" onClick={(e) => { e.stopPropagation(); setPreview(true); }}>
                     {title && <div className="chat-media-file-title">{title}</div>}
-                    <img src={url} alt={title} style={{ cursor: "pointer" }} onError={onError} />
+                    <img src={url} alt={title} loading="lazy" decoding="async" style={{ cursor: "pointer" }} onError={onError} />
                 </div>
             </div>
             {preview && (
@@ -2302,7 +2306,7 @@ function XiaohongshuShareBubble({ msg }: { msg: ChatMessage }) {
             </div>
             <div className="chat-xhs-share-body">
                 <div className={`chat-xhs-share-cover chat-xhs-share-cover--${data?.xiaohongshuTone || "blush"}`}>
-                    {imageUrl ? <img src={imageUrl} alt="" /> : <span>{coverIcon}</span>}
+                    {imageUrl ? <img src={imageUrl} alt="" loading="lazy" decoding="async" /> : <span>{coverIcon}</span>}
                 </div>
                 <div className="chat-xhs-share-info">
                     <div className="chat-xhs-share-title">{title}</div>
