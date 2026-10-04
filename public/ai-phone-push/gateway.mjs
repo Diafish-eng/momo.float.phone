@@ -523,7 +523,9 @@ Deno.serve(async (request: Request) => {
     });
     let sent = 0;
     const errors: string[] = [];
-    for (const subscription of subscriptions) {
+    // 壳订阅（endpoint 以 shell: 开头）发不了 Web Push，排除掉，否则解码 "shell" 假密钥会崩。
+    const webSubs = subscriptions.filter(sub => !sub.endpoint.startsWith("shell:"));
+    for (const subscription of webSubs) {
       try {
         const status = await sendWebPushRaw(subscription, payload, {
           publicKey: config.vapid_public_key,
@@ -1029,7 +1031,11 @@ $CRON$)`);
       });
       let sent = 0;
       const errors: string[] = [];
-      for (const subscription of subscriptions) {
+      // 安卓壳（FloatShell）的合成订阅（endpoint 以 shell: 开头）发不了 Web Push，
+      // 要走 Realtime 广播。漏过滤会去解码 "shell" 假密钥，atob 抛 "Failed to decode base64"。
+      const webSubs = subscriptions.filter(sub => !sub.endpoint.startsWith("shell:"));
+      const hasShellSub = webSubs.length < subscriptions.length;
+      for (const subscription of webSubs) {
         try {
           const status = await sendWebPushRaw(subscription, payload, {
             publicKey: config.vapid_public_key,
@@ -1045,6 +1051,31 @@ $CRON$)`);
           }
         } catch (error) {
           errors.push(error instanceof Error ? error.message : String(error));
+        }
+      }
+      // 壳订阅：广播到壳的个人频道，安卓壳收到后弹本地通知（与正式推送一致）
+      if (hasShellSub) {
+        try {
+          const response = await fetch(`${supabaseUrl}/realtime/v1/api/broadcast`, {
+            method: "POST",
+            headers: restHeaders,
+            body: JSON.stringify({
+              messages: [{
+                topic: `shellpush:${OWNER_ID}`,
+                event: "notify",
+                payload: {
+                  title: "小手机",
+                  body: "个人 Supabase 离线推送已连通。",
+                  url: "/",
+                },
+              }],
+            }),
+          });
+          await response.text().catch(() => undefined);
+          if (response.ok) sent += 1;
+          else errors.push(`shell http ${response.status}`);
+        } catch (error) {
+          errors.push(`shell ${error instanceof Error ? error.message : String(error)}`);
         }
       }
       if (sent === 0) return json({ ok: false, error: errors[0] || "测试推送发送失败。" }, 500);
