@@ -131,6 +131,9 @@ class MainActivity : AppCompatActivity() {
             databaseEnabled = true
             mediaPlaybackRequiresUserGesture = false
             allowFileAccess = false
+            // 按真实手机宽度(width=device-width, ~393px)渲染，触发网页的手机全屏样式，去掉手机边框
+            useWideViewPort = true
+            loadWithOverviewMode = true
             userAgentString = "$userAgentString FloatShell/$VERSION"
         }
         CookieManager.getInstance().setAcceptCookie(true)
