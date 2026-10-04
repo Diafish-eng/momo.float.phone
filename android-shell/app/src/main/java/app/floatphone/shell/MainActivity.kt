@@ -24,8 +24,14 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 /**
  * Float 小手机安卓壳：全屏 WebView 直接加载线上站点。
@@ -38,6 +44,20 @@ class MainActivity : AppCompatActivity() {
         const val VERSION = "1.0.0"
         /** 来电接听等场景的站内深链（必须以 SITE_URL 开头，否则忽略） */
         const val EXTRA_OPEN_URL = "open_url"
+        const val CH_CHAT = "chat_messages"
+        /** 注入网页的通知垫片：WebView 无 Notification API，转调原生 AndroidShell.showNotification */
+        val NOTIFICATION_SHIM_JS = """
+            (function(){
+              if(!window.AndroidShell||!window.AndroidShell.showNotification)return;
+              if(window.__floatNotifPatched)return;window.__floatNotifPatched=true;
+              function N(t,o){o=o||{};try{window.AndroidShell.showNotification(String(t||'float'),String(o.body||''),String(o.tag||('t'+Date.now())));}catch(e){}
+                this.close=function(){};}
+              N.permission='granted';
+              N.requestPermission=function(cb){if(cb)cb('granted');return Promise.resolve('granted');};
+              try{Object.defineProperty(window,'Notification',{value:N,configurable:true,writable:true});}catch(e){window.Notification=N;}
+              try{if(window.ServiceWorkerRegistration)ServiceWorkerRegistration.prototype.showNotification=function(t,o){N(t,o);return Promise.resolve();};}catch(e){}
+            })();
+        """.trimIndent()
     }
 
     private lateinit var webView: WebView
@@ -92,6 +112,7 @@ class MainActivity : AppCompatActivity() {
 
         webView = WebView(this)
         setContentView(webView)
+        hideSystemBars() // 沉浸式全屏：隐藏状态栏/导航栏
 
         webView.settings.apply {
             javaScriptEnabled = true
@@ -107,6 +128,10 @@ class MainActivity : AppCompatActivity() {
         webView.addJavascriptInterface(ShellBridge(), "AndroidShell")
 
         webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView, url: String) {
+                // 安卓 WebView 没有网页通知 API：注入垫片，把网页的通知调用转到原生壳。
+                view.evaluateJavascript(NOTIFICATION_SHIM_JS, null)
+            }
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val url = request.url
                 val scheme = url.scheme ?: return false
@@ -216,10 +241,52 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    private fun hideSystemBars() {
+        WindowInsetsControllerCompat(window, webView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideSystemBars()
+    }
+
+    /** 网页（经注入垫片）调用 AndroidShell.showNotification 时，弹一条原生通知；点按回到 App。 */
+    private fun showWebNotification(title: String, body: String, tag: String) {
+        val mgr = getSystemService(NotificationManager::class.java) ?: return
+        if (Build.VERSION.SDK_INT >= 26) {
+            mgr.createNotificationChannel(
+                NotificationChannel(CH_CHAT, "聊天消息", NotificationManager.IMPORTANCE_HIGH),
+            )
+        }
+        val tapIntent = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        val pi = PendingIntent.getActivity(
+            this, 0, tapIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(this, CH_CHAT)
+            .setSmallIcon(R.drawable.ic_stat)
+            .setContentTitle(title.ifBlank { "float" })
+            .setContentText(body)
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+        mgr.notify(tag.hashCode(), notification)
+    }
+
     /** 暴露给网页的原生桥（网页侧可用 window.AndroidShell 特性检测壳环境）。 */
     inner class ShellBridge {
         @JavascriptInterface
         fun getVersion(): String = VERSION
+
+        /** 网页弹原生通知：new Notification / registration.showNotification 经垫片转到这里。 */
+        @JavascriptInterface
+        fun showNotification(title: String, body: String, tag: String) {
+            runOnUiThread { showWebNotification(title, body, tag) }
+        }
 
         /** 打开本应用的系统设置页（引导用户关电池限制、开自启动）。 */
         @JavascriptInterface
