@@ -6,7 +6,7 @@ plugins {
 // 签名：CI 里通过环境变量注入 keystore（见 android-shell/README.md）；
 // 没有配置时 release 构建产出未签名 APK，debug 构建始终可直接安装测试。
 def ksFile = System.getenv("SHELL_KEYSTORE_FILE")
-def siteUrl = (System.getenv("SHELL_SITE_URL") ?: "https://momo-float-phone-nine.vercel.app").replaceAll('/+$', '')
+def siteUrl = (System.getenv("SHELL_SITE_URL") ?: "https://momo-float-phone-git-test-diafish-engs-projects.vercel.app").replaceAll('/+$', '')
 
 android {
     namespace 'app.floatphone.shell'
