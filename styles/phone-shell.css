@@ -1055,8 +1055,8 @@
 }
 
 /* ── Mobile responsive ── */
-
-@media (max-width: 900px) and (hover: none) and (pointer: coarse) {
+/* test 版：无条件全屏去边框（电脑/手机/任何宽度都铺满），对齐原作者 test 行为 */
+@media all {
 
   /* 用户在设置里显式开启「显示系统状态栏」且运行时不在全屏时，控制器才会挂
      data-pwa-display-mode 标记（见 pwa-manifest-injector）：此时所有 App 共用系统
