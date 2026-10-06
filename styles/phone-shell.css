@@ -1055,8 +1055,9 @@
 }
 
 /* ── Mobile responsive ── */
-/* test 版：无条件全屏去边框（电脑/手机/任何宽度都铺满），对齐原作者 test 行为 */
-@media all {
+/* 只对触屏手机全屏去边框（电脑/鼠标设备保留手机边框外观）。宽度放宽到 900px，
+   触屏条件 (hover:none)+(pointer:coarse) 已排除电脑鼠标，所以电脑任何窗口宽度都保留边框。 */
+@media (max-width: 900px) and (hover: none) and (pointer: coarse) {
 
   /* 用户在设置里显式开启「显示系统状态栏」且运行时不在全屏时，控制器才会挂
      data-pwa-display-mode 标记（见 pwa-manifest-injector）：此时所有 App 共用系统
