@@ -133,7 +133,42 @@ html[data-skin="wechat"] .chat-tab-bar {
   -webkit-backdrop-filter: none !important;
   border-top: 0.5px solid var(--c-card-border) !important;
 }
-/* 顶部标题栏也用实色，像微信 */
-html[data-skin="wechat"] .page-header {
+
+/* ── 气泡颜色：直接强制背景（压过内置蓝气泡预设），高优先级 + !important ── */
+html[data-skin="wechat"] .chat-room-wrapper .chat-bubble-role-user {
+  background: #95EC69 !important;   /* 微信绿 */
+  color: #1A1A1A !important;
+}
+html[data-skin="wechat"] .chat-room-wrapper .chat-bubble-role-assistant {
+  background: #FFFFFF !important;   /* 对方白 */
+  color: #1A1A1A !important;
+}
+html[data-skin="wechat"][data-theme="dark"] .chat-room-wrapper .chat-bubble-role-user {
+  background: #3EB575 !important;   /* 深色己方绿 */
+  color: #0B1F12 !important;
+}
+html[data-skin="wechat"][data-theme="dark"] .chat-room-wrapper .chat-bubble-role-assistant {
+  background: #2C2C2E !important;   /* 深色对方灰 */
+  color: #EDEDED !important;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-skin="wechat"]:not([data-theme="light"]) .chat-room-wrapper .chat-bubble-role-user {
+    background: #3EB575 !important;
+    color: #0B1F12 !important;
+  }
+  html[data-skin="wechat"]:not([data-theme="light"]) .chat-room-wrapper .chat-bubble-role-assistant {
+    background: #2C2C2E !important;
+    color: #EDEDED !important;
+  }
+}
+
+/* ── 顶部标题栏：实色不透明，像微信（原来透明/玻璃，深色下露出亮壁纸显白）── */
+html[data-skin="wechat"] .chat-app .chat-room-wrapper .page-header,
+html[data-skin="wechat"] .chat-app .chat-room-wrapper .page-header-content {
   background: var(--c-header-bg) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-skin="wechat"] .chat-app .chat-room-wrapper .page-title {
+  color: var(--c-text-title) !important;
 }
