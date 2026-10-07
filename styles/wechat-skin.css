@@ -86,10 +86,10 @@ html[data-skin="wechat"][data-theme="dark"] .bubble-self {
    壁纸是写在 .chat-room-wrapper 行内样式上的，用 inset box-shadow 盖暗罩：
    它画在背景图之上、子内容（气泡/文字）之下，所以壁纸变暗但聊天内容不受影响。 */
 html[data-skin="wechat"][data-theme="dark"] .chat-room-wrapper[data-has-bg-image] {
-  box-shadow: inset 0 0 0 100vh rgba(0, 0, 0, 0.55) !important;
+  box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.55) !important;
 }
 @media (prefers-color-scheme: dark) {
   html[data-skin="wechat"]:not([data-theme="light"]) .chat-room-wrapper[data-has-bg-image] {
-    box-shadow: inset 0 0 0 100vh rgba(0, 0, 0, 0.55) !important;
+    box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.55) !important;
   }
 }
