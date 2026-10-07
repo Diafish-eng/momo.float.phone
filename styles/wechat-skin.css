@@ -93,3 +93,47 @@ html[data-skin="wechat"][data-theme="dark"] .chat-room-wrapper[data-has-bg-image
     box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.55) !important;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   微信版式 v1：气泡 + 底部栏（全部锁在 data-skin=wechat 下）
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── 气泡：微信风小圆角、去阴影；己方绿气泡用深色字（原来写死白字不对） ── */
+html[data-skin="wechat"] .chat-bubble-role-user,
+html[data-skin="wechat"] .chat-bubble-role-assistant {
+  border-radius: 6px !important;
+  box-shadow: none !important;
+}
+html[data-skin="wechat"] .chat-bubble-role-user {
+  color: #1A1A1A !important;   /* 微信绿气泡上的深色字 */
+}
+html[data-skin="wechat"] .chat-bubble-role-assistant {
+  color: #1A1A1A !important;
+}
+/* 深色下字色 */
+html[data-skin="wechat"][data-theme="dark"] .chat-bubble-role-user {
+  color: #0B1F12 !important;
+}
+html[data-skin="wechat"][data-theme="dark"] .chat-bubble-role-assistant {
+  color: #EDEDED !important;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-skin="wechat"]:not([data-theme="light"]) .chat-bubble-role-user {
+    color: #0B1F12 !important;
+  }
+  html[data-skin="wechat"]:not([data-theme="light"]) .chat-bubble-role-assistant {
+    color: #EDEDED !important;
+  }
+}
+
+/* ── 底部 tab 栏：微信实色栏（原来是玻璃半透明，所以"浅到看不见"） ── */
+html[data-skin="wechat"] .chat-tab-bar {
+  background: var(--c-header-bg) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-top: 0.5px solid var(--c-card-border) !important;
+}
+/* 顶部标题栏也用实色，像微信 */
+html[data-skin="wechat"] .page-header {
+  background: var(--c-header-bg) !important;
+}
