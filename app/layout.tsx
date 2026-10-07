@@ -30,6 +30,14 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <head>
+        {/* 开屏前就按已保存的深/浅模式设好 data-theme，避免刷新时闪白。
+            'dark'/'light' 强制；'auto' 或未设 = 跟随系统。 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var m=localStorage.getItem('float-theme-mode');if(m==='dark'||m==='light'){document.documentElement.setAttribute('data-theme',m);}}catch(e){}",
+          }}
+        />
         <link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials" />
         <meta name="theme-color" content="#f8f7f2" />
         <link rel="apple-touch-icon" href="/icon-192.png" />

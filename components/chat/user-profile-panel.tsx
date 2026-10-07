@@ -171,6 +171,7 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
     const profileAvatarInputRef = useRef<HTMLInputElement>(null);
     const [enterToSendEnabled, setEnterToSendEnabled] = useState(false);
     const [callVibrationEnabled, setCallVibrationEnabled] = useState(true);
+    const [themeDark, setThemeDark] = useState(false);
     const [userStats, setUserStats] = useState({ chats: 0, moments: 0, visitors: 1234 });
     const [walletSummary, setWalletSummary] = useState(() => {
         const wallet = loadWalletState();
@@ -179,6 +180,24 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
             cardCount: wallet.cards.length,
         };
     });
+
+    // 深色模式：开屏把已保存的模式（或系统默认）反映到开关上
+    useEffect(() => {
+        try {
+            const m = localStorage.getItem("float-theme-mode");
+            if (m === "dark") setThemeDark(true);
+            else if (m === "light") setThemeDark(false);
+            else setThemeDark(!!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches));
+        } catch { /* ignore */ }
+    }, []);
+
+    const handleThemeDarkToggle = (enabled: boolean) => {
+        setThemeDark(enabled);
+        try {
+            localStorage.setItem("float-theme-mode", enabled ? "dark" : "light");
+            document.documentElement.setAttribute("data-theme", enabled ? "dark" : "light");
+        } catch { /* ignore */ }
+    };
 
     useEffect(() => {
         setIdentity(resolveUserIdentity());
@@ -500,6 +519,15 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
                                 <span className="ts-11 text-[var(--c-text)] opacity-70">开启后 Enter 发送，Shift+Enter 换行</span>
                             </div>
                             <Toggle checked={enterToSendEnabled} onChange={handleEnterToSendToggle} />
+                        </div>
+
+                        <div className="flex items-center gap-3 py-3 w-full border-b border-[color-mix(in_srgb,var(--c-card-border)_20%,transparent)]">
+                            <Moon size={18} className="text-[var(--c-icon)] opacity-70" strokeWidth={1.25}/>
+                            <div className="flex flex-col flex-1 text-left gap-0.5">
+                                <span className="ts-14 font-semibold text-[var(--c-text-title)]">深色模式</span>
+                                <span className="ts-11 text-[var(--c-text)] opacity-70">开启后整体变暗（晚上护眼）；关闭为浅色</span>
+                            </div>
+                            <Toggle checked={themeDark} onChange={handleThemeDarkToggle} />
                         </div>
 
                         <div className="flex items-center gap-3 py-3 w-full border-b border-[color-mix(in_srgb,var(--c-card-border)_20%,transparent)]">

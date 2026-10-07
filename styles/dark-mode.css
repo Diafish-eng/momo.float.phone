@@ -1,0 +1,67 @@
+/* ──────────────────────────────────────────────────────────────
+   深色模式（微信 iOS 深色风格）
+   - 用 html[data-theme="dark"] 选择器（优先级高于 :root，能压过用户自定义配色）
+   - data-theme="dark" 强制深色；data-theme="light" 强制浅色；
+     无该属性时跟随系统（prefers-color-scheme）。
+   - 只覆盖核心表面色（背景/气泡/文字/卡片/面板/输入/头部），
+     保证聊天、我、朋友圈、发现整体变暗，而不逐一改每个子应用。
+   ────────────────────────────────────────────────────────────── */
+
+/* 把深色变量集中成一组，手动深色 + 自动跟随系统都复用 */
+html[data-theme="dark"],
+html[data-theme="dark"] :root {
+  --c-header-bg: #1A1A1A;          /* 顶部栏 */
+  --c-page-body-bg: #111111;       /* 页面/聊天背景 */
+  --c-card: rgba(44, 44, 46, 0.72);/* 卡片 */
+  --c-card-border: #2A2A2C;
+  --c-polaroid: #2C2C2E;
+  --c-polaroid-back: #1E1E1E;
+  --c-panel: #1E1E1E;              /* 操作面板 */
+  --c-panel-border: #2A2A2C;
+  --c-text-title: #EDEDED;         /* 强调文字 */
+  --c-text: #9A9A9A;               /* 普通文字 */
+  --c-icon-active: #EDEDED;        /* 强调图标 */
+  --c-icon: #6E6E6E;               /* 普通图标 */
+  --c-input: #2C2C2E;              /* 输入框 */
+  --c-input-border: rgba(60, 60, 62, 0);
+  --c-bubble-self: #3EB575;        /* 己方气泡（微信深色绿） */
+  --c-bubble-other: #2C2C2E;       /* 对方气泡（深灰） */
+  --c-calendar-bg: #1E1E1E;
+  color-scheme: dark;
+}
+
+/* 自动跟随系统：没有显式选 light 时，系统深色就变暗 */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --c-header-bg: #1A1A1A;
+    --c-page-body-bg: #111111;
+    --c-card: rgba(44, 44, 46, 0.72);
+    --c-card-border: #2A2A2C;
+    --c-polaroid: #2C2C2E;
+    --c-polaroid-back: #1E1E1E;
+    --c-panel: #1E1E1E;
+    --c-panel-border: #2A2A2C;
+    --c-text-title: #EDEDED;
+    --c-text: #9A9A9A;
+    --c-icon-active: #EDEDED;
+    --c-icon: #6E6E6E;
+    --c-input: #2C2C2E;
+    --c-input-border: rgba(60, 60, 62, 0);
+    --c-bubble-self: #3EB575;
+    --c-bubble-other: #2C2C2E;
+    --c-calendar-bg: #1E1E1E;
+    color-scheme: dark;
+  }
+}
+
+/* 深色下己方气泡文字压深，像微信 */
+html[data-theme="dark"] .chat-bubble-self,
+html[data-theme="dark"] .bubble-self {
+  color: #0B1F12;
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .chat-bubble-self,
+  html:not([data-theme="light"]) .bubble-self {
+    color: #0B1F12;
+  }
+}
