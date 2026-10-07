@@ -172,3 +172,10 @@ html[data-skin="wechat"] .chat-app .chat-room-wrapper .page-header-content {
 html[data-skin="wechat"] .chat-app .chat-room-wrapper .page-title {
   color: var(--c-text-title) !important;
 }
+
+/* ── 头像：微信方形圆角（原来是圆形 rounded-[20px]）── */
+html[data-skin="wechat"] .chat-msg-avatar,
+html[data-skin="wechat"] .chat-msg-avatar > div,
+html[data-skin="wechat"] .chat-msg-avatar img {
+  border-radius: 5px !important;
+}
