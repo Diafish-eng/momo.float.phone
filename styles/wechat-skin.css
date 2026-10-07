@@ -1,0 +1,83 @@
+/* ════════════════════════════════════════════════════════════════
+   原生微信外观（可开关 · 作用域隔离）
+   ────────────────────────────────────────────────────────────────
+   设计原则：所有样式都锁在 html[data-skin="wechat"] 下。
+   - 开关「原生微信外观」关闭时 → 这里一条都不生效 → App 完全是原始样子
+     → 用户粘贴的第三方美化包照常工作，零冲突。
+   - 开关打开时 → 应用仿微信配色 + 深色跟随系统/手动开关。
+   深色由 data-theme 控制：dark=强制深、light=强制浅、未设=跟随系统。
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── 仿微信 · 浅色（开关开、非深色时） ── */
+html[data-skin="wechat"] {
+  --c-header-bg: #EDEDED;
+  --c-page-body-bg: #EDEDED;
+  --c-card: rgba(255, 255, 255, 0.92);
+  --c-card-border: #E2E2E2;
+  --c-panel: #F7F7F7;
+  --c-panel-border: #E2E2E2;
+  --c-text-title: #1A1A1A;
+  --c-text: #8A8A8A;
+  --c-icon-active: #07C160;   /* 微信绿 */
+  --c-icon: #9A9A9A;
+  --c-input: #FFFFFF;
+  --c-bubble-self: #95EC69;   /* 微信己方绿气泡 */
+  --c-bubble-other: #FFFFFF;  /* 对方白气泡 */
+}
+
+/* ── 仿微信 · 深色 ── 共用变量块，手动深色 + 跟随系统都复用 ── */
+html[data-skin="wechat"][data-theme="dark"] {
+  --c-header-bg: #1A1A1A;
+  --c-page-body-bg: #111111;
+  --c-card: rgba(44, 44, 46, 0.72);
+  --c-card-border: #2A2A2C;
+  --c-polaroid: #2C2C2E;
+  --c-polaroid-back: #1E1E1E;
+  --c-panel: #1E1E1E;
+  --c-panel-border: #2A2A2C;
+  --c-text-title: #EDEDED;
+  --c-text: #9A9A9A;
+  --c-icon-active: #07C160;
+  --c-icon: #6E6E6E;
+  --c-input: #2C2C2E;
+  --c-input-border: rgba(60, 60, 62, 0);
+  --c-bubble-self: #3EB575;
+  --c-bubble-other: #2C2C2E;
+  --c-calendar-bg: #1E1E1E;
+  color-scheme: dark;
+}
+/* 开关开 + 未手动选浅色 + 系统深色 → 自动深色 */
+@media (prefers-color-scheme: dark) {
+  html[data-skin="wechat"]:not([data-theme="light"]) {
+    --c-header-bg: #1A1A1A;
+    --c-page-body-bg: #111111;
+    --c-card: rgba(44, 44, 46, 0.72);
+    --c-card-border: #2A2A2C;
+    --c-polaroid: #2C2C2E;
+    --c-polaroid-back: #1E1E1E;
+    --c-panel: #1E1E1E;
+    --c-panel-border: #2A2A2C;
+    --c-text-title: #EDEDED;
+    --c-text: #9A9A9A;
+    --c-icon-active: #07C160;
+    --c-icon: #6E6E6E;
+    --c-input: #2C2C2E;
+    --c-input-border: rgba(60, 60, 62, 0);
+    --c-bubble-self: #3EB575;
+    --c-bubble-other: #2C2C2E;
+    --c-calendar-bg: #1E1E1E;
+    color-scheme: dark;
+  }
+}
+
+/* ── 深色下己方气泡文字压深，像微信 ── */
+html[data-skin="wechat"][data-theme="dark"] .chat-bubble-self,
+html[data-skin="wechat"][data-theme="dark"] .bubble-self {
+  color: #0B1F12;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-skin="wechat"]:not([data-theme="light"]) .chat-bubble-self,
+  html[data-skin="wechat"]:not([data-theme="light"]) .bubble-self {
+    color: #0B1F12;
+  }
+}

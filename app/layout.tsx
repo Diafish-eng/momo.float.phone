@@ -30,12 +30,12 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <head>
-        {/* 开屏前就按已保存的深/浅模式设好 data-theme，避免刷新时闪白。
-            'dark'/'light' 强制；'auto' 或未设 = 跟随系统。 */}
+        {/* 开屏前恢复「原生微信外观」开关(data-skin)与深浅(data-theme)，避免刷新闪白。
+            skin='wechat' 时才应用仿微信样式；theme 'dark'/'light' 强制，未设=跟随系统。 */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var m=localStorage.getItem('float-theme-mode');if(m==='dark'||m==='light'){document.documentElement.setAttribute('data-theme',m);}}catch(e){}",
+              "try{var s=localStorage.getItem('float-skin');if(s==='wechat'){document.documentElement.setAttribute('data-skin','wechat');}var m=localStorage.getItem('float-theme-mode');if(m==='dark'||m==='light'){document.documentElement.setAttribute('data-theme',m);}}catch(e){}",
           }}
         />
         <link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials" />

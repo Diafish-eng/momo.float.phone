@@ -172,6 +172,7 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
     const [enterToSendEnabled, setEnterToSendEnabled] = useState(false);
     const [callVibrationEnabled, setCallVibrationEnabled] = useState(true);
     const [themeDark, setThemeDark] = useState(false);
+    const [skinWechat, setSkinWechat] = useState(false);
     const [userStats, setUserStats] = useState({ chats: 0, moments: 0, visitors: 1234 });
     const [walletSummary, setWalletSummary] = useState(() => {
         const wallet = loadWalletState();
@@ -181,15 +182,30 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
         };
     });
 
-    // 深色模式：开屏把已保存的模式（或系统默认）反映到开关上
+    // 原生微信外观 + 深色：开屏把已保存状态反映到开关上
     useEffect(() => {
         try {
+            setSkinWechat(localStorage.getItem("float-skin") === "wechat");
             const m = localStorage.getItem("float-theme-mode");
             if (m === "dark") setThemeDark(true);
             else if (m === "light") setThemeDark(false);
             else setThemeDark(!!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches));
         } catch { /* ignore */ }
     }, []);
+
+    // 「原生微信外观」总开关：开 = 应用仿微信皮肤(含深色)；关 = 回到原始(美化包正常用)
+    const handleSkinWechatToggle = (enabled: boolean) => {
+        setSkinWechat(enabled);
+        try {
+            if (enabled) {
+                localStorage.setItem("float-skin", "wechat");
+                document.documentElement.setAttribute("data-skin", "wechat");
+            } else {
+                localStorage.removeItem("float-skin");
+                document.documentElement.removeAttribute("data-skin");
+            }
+        } catch { /* ignore */ }
+    };
 
     const handleThemeDarkToggle = (enabled: boolean) => {
         setThemeDark(enabled);
@@ -522,10 +538,19 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
                         </div>
 
                         <div className="flex items-center gap-3 py-3 w-full border-b border-[color-mix(in_srgb,var(--c-card-border)_20%,transparent)]">
+                            <MessageSquare size={18} className="text-[var(--c-icon)] opacity-70" strokeWidth={1.25}/>
+                            <div className="flex flex-col flex-1 text-left gap-0.5">
+                                <span className="ts-14 font-semibold text-[var(--c-text-title)]">原生微信外观</span>
+                                <span className="ts-11 text-[var(--c-text)] opacity-70">开启=仿微信皮肤(含深色)；关闭=原始外观，不影响你粘贴的美化包</span>
+                            </div>
+                            <Toggle checked={skinWechat} onChange={handleSkinWechatToggle} />
+                        </div>
+
+                        <div className="flex items-center gap-3 py-3 w-full border-b border-[color-mix(in_srgb,var(--c-card-border)_20%,transparent)]">
                             <Moon size={18} className="text-[var(--c-icon)] opacity-70" strokeWidth={1.25}/>
                             <div className="flex flex-col flex-1 text-left gap-0.5">
                                 <span className="ts-14 font-semibold text-[var(--c-text-title)]">深色模式</span>
-                                <span className="ts-11 text-[var(--c-text)] opacity-70">开启后整体变暗（晚上护眼）；关闭为浅色</span>
+                                <span className="ts-11 text-[var(--c-text)] opacity-70">需先开「原生微信外观」·开=深、关=浅、不手动则跟随系统</span>
                             </div>
                             <Toggle checked={themeDark} onChange={handleThemeDarkToggle} />
                         </div>
