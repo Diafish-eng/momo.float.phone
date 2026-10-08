@@ -535,3 +535,16 @@ html[data-skin-pack] .chat-app .chat-list-wx-title {
 .chat-app[data-swipe-back] {
   background: var(--wx-list-bg, #fff) !important;
 }
+
+/* 其它页面右滑返回时垫在下面的「上一页」 */
+.swipe-back-under {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  isolation: isolate;
+  box-sizing: border-box;
+}
+.swipe-back-under > .chat-swipe-back-dim {
+  z-index: 9999;
+}

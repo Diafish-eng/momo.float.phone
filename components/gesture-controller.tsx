@@ -37,6 +37,7 @@ function isHorizontallyScrollable(from: Element | null, stopAt: Element | null):
 export function GestureController() {
   useEffect(() => {
     type Mode = "none" | "pending" | "back" | "quote";
+    const prevPages = new WeakMap<HTMLElement, HTMLElement[]>();
     let mode: Mode = "none";
     let startX = 0;
     let startY = 0;
@@ -54,6 +55,9 @@ export function GestureController() {
     let underEl: HTMLElement | null = null;
     let navEl: HTMLElement | null = null;
     let dimEl: HTMLElement | null = null;
+    // 其它页面右滑：把「上一页」的旧节点临时垫在下面（见下方 prevPages）
+    let underNodes: HTMLElement[] | null = null;
+    let parentPosReset: HTMLElement | null = null;
 
     // 左滑引用
     let rowEl: HTMLElement | null = null;
@@ -69,6 +73,8 @@ export function GestureController() {
       underEl = null;
       navEl = null;
       dimEl = null;
+      underNodes = null;
+      parentPosReset = null;
       rowEl = null;
       iconEl = null;
     };
@@ -103,6 +109,26 @@ export function GestureController() {
             appEl = app;
             underEl = app.querySelector<HTMLElement>(":scope > .chat-main-content");
             navEl = app.querySelector<HTMLElement>(":scope > .chat-tab-bar");
+          } else if (pageEl) {
+            // 其它页面：找「这一页是顶替谁出现的」。找到就整块一起滑，底下垫上一页。
+            let node: HTMLElement | null = pageEl;
+            let found: HTMLElement | null = null;
+            for (let hops = 0; node && node !== document.body && hops < 12; hops++) {
+              if (prevPages.has(node)) { found = node; break; }
+              const parent: HTMLElement | null = node.parentElement;
+              if (!parent || parent.classList.contains("page-shell")) break;
+              node = parent;
+            }
+            if (found) {
+              // 这块里如果还有别的正在显示的页面（当前页只是盖在它上面的浮层），就不整块滑
+              const others = Array.from(found.querySelectorAll<HTMLElement>(".page-shell"));
+              const overlayCase = others.some((el) => el !== shell && el.offsetParent !== null && !el.contains(shell) && !shell.contains(el));
+              const nodes = prevPages.get(found);
+              if (!overlayCase && nodes && nodes.length > 0) {
+                pageEl = found;
+                underNodes = nodes;
+              }
+            }
           }
         }
       }
@@ -125,19 +151,59 @@ export function GestureController() {
       if (dimEl) dimEl.style.opacity = String(0.22 * (1 - progress));
     };
 
+    // 把上一页的旧节点装进一个不可交互的容器，垫在当前页下面
+    const mountUnderPage = () => {
+      const parent = pageEl?.parentElement;
+      if (!pageEl || !parent || !underNodes) return;
+      try {
+        const cs = getComputedStyle(parent);
+        const wrap = document.createElement("div");
+        wrap.className = "swipe-back-under";
+        wrap.setAttribute("inert", "");
+        wrap.setAttribute("aria-hidden", "true");
+        if (cs.display.includes("flex")) {
+          wrap.style.display = "flex";
+          wrap.style.flexDirection = cs.flexDirection;
+          wrap.style.alignItems = cs.alignItems;
+          wrap.style.gap = cs.gap;
+        }
+        wrap.style.padding = cs.padding;
+        for (const n of underNodes) {
+          if (/^(IFRAME|VIDEO|AUDIO|SCRIPT|STYLE|LINK)$/.test(n.tagName)) continue;
+          // 内嵌网页/音视频/样式不能重新挂载（会重载或重复生效），旧页面里的直接去掉
+          n.querySelectorAll("iframe, video, audio, script, style, link").forEach((el) => el.remove());
+          wrap.appendChild(n);
+        }
+        const dim = document.createElement("div");
+        dim.className = "chat-swipe-back-dim";
+        wrap.appendChild(dim);
+        if (cs.position === "static") {
+          parent.style.position = "relative";
+          parentPosReset = parent;
+        }
+        parent.insertBefore(wrap, pageEl);
+        pageEl.style.transform = "translate3d(0,0,0)";
+        underEl = wrap;
+        dimEl = dim;
+      } catch { /* 垫不上就退回普通滑动 */ }
+    };
+
     const beginBack = () => {
       if (!pageEl) return;
       pageWidth = pageEl.offsetWidth || window.innerWidth;
       pageEl.style.transition = "none";
       pageEl.style.willChange = "transform";
-      if (appEl && underEl) {
-        appEl.setAttribute("data-swipe-back", "");
+      if (!underEl && underNodes) mountUnderPage();
+      if (underEl) {
         pageEl.style.boxShadow = "-6px 0 24px rgba(0, 0, 0, 0.16)";
-        if (navEl) navEl.style.display = "";
-        const dim = document.createElement("div");
-        dim.className = "chat-swipe-back-dim";
-        appEl.appendChild(dim);
-        dimEl = dim;
+        if (appEl) {
+          appEl.setAttribute("data-swipe-back", "");
+          if (navEl) navEl.style.display = "";
+          const dim = document.createElement("div");
+          dim.className = "chat-swipe-back-dim";
+          appEl.appendChild(dim);
+          dimEl = dim;
+        }
         for (const el of [underEl, navEl]) {
           if (!el) continue;
           el.style.transition = "none";
@@ -221,6 +287,8 @@ export function GestureController() {
         const under = underEl;
         const nav = navEl;
         const dim = dimEl;
+        const underWrap = underNodes ? underEl : null;
+        const posReset = parentPosReset;
         if (under) {
           const ease = "220ms cubic-bezier(0.2, 0.8, 0.2, 1)";
           for (const layer of [under, nav]) {
@@ -246,6 +314,8 @@ export function GestureController() {
             // 没返回成功：聊天室还开着，底部栏恢复隐藏
             if (nav && !commit) nav.style.display = "none";
             dim?.remove();
+            underWrap?.remove();
+            if (posReset) posReset.style.position = "";
             app?.removeAttribute("data-swipe-back");
           }, commit ? 80 : 0);
         }, 230);
@@ -270,11 +340,43 @@ export function GestureController() {
       reset();
     };
 
+    // 记录「谁顶替了谁」：页面切换时旧页面的节点被移出文档、新页面被插进同一个父节点。
+    // 把旧节点记在新页面名下，右滑返回时拿出来垫在下面，就能两页同屏。
+    const observer = new MutationObserver((records) => {
+      try {
+        let groups: Map<Node, { added: HTMLElement[]; removed: HTMLElement[] }> | null = null;
+        for (const record of records) {
+          if (record.addedNodes.length === 0 && record.removedNodes.length === 0) continue;
+          if (!groups) groups = new Map();
+          let group = groups.get(record.target);
+          if (!group) { group = { added: [], removed: [] }; groups.set(record.target, group); }
+          for (const n of Array.from(record.addedNodes)) {
+            if (n instanceof HTMLElement && !n.classList.contains("swipe-back-under")) group.added.push(n);
+          }
+          for (const n of Array.from(record.removedNodes)) {
+            if (n instanceof HTMLElement && !n.classList.contains("swipe-back-under") && !n.classList.contains("chat-swipe-back-dim")) group.removed.push(n);
+          }
+        }
+        if (!groups) return;
+        groups.forEach((group) => {
+          if (group.added.length === 0 || group.removed.length === 0) return;
+          const removed = group.removed.filter((n) => !n.isConnected);
+          if (removed.length === 0) return;
+          for (const a of group.added) {
+            if (!a.isConnected) continue;
+            if (a.classList.contains("page-shell") || a.querySelector(".page-shell")) prevPages.set(a, removed);
+          }
+        });
+      } catch { /* 记录失败只是少一个同屏效果 */ }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
     document.addEventListener("touchstart", onStart, { passive: true });
     document.addEventListener("touchmove", onMove, { passive: false });
     document.addEventListener("touchend", onEnd, { passive: true });
     document.addEventListener("touchcancel", onEnd, { passive: true });
     return () => {
+      observer.disconnect();
       document.removeEventListener("touchstart", onStart);
       document.removeEventListener("touchmove", onMove);
       document.removeEventListener("touchend", onEnd);
