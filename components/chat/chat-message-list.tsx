@@ -188,6 +188,7 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
     return (
         <div className="relative flex-1 h-full">
             <PageShell
+                className="chat-list-page"
                 leftAction={
                     <div className="flex items-center min-w-max">
                         <button className="page-back-btn shrink-0 mr-2" type="button" onClick={onCloseApp} aria-label="返回">

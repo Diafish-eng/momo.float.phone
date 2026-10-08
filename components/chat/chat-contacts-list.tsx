@@ -192,6 +192,7 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
     return (
         <div className="relative flex-1 h-full">
             <PageShell
+                className="chat-contacts-page"
                 title="通讯录"
                 onBack={onCloseApp}
                 bodyRef={bodyRef}

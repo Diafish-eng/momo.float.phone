@@ -292,7 +292,7 @@ html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-wx
 .chat-app { --wx-list-bg: #FFFFFF; --wx-pin-bg: #EDEDED; }
 html[data-theme="dark"] .chat-app { --wx-list-bg: #111111; --wx-pin-bg: #1E1E1E; }
 
-html:not([data-skin-pack]) .chat-app .page-body:has(> .chat-list-tabs) {
+html:not([data-skin-pack]) .chat-app .chat-list-page > .page-body {
   background: var(--wx-list-bg) !important;
 }
 /* 搜索框：微信的浅灰圆角矩形 */
@@ -390,7 +390,7 @@ html:not([data-skin-pack]) .chat-app .chat-contacts-top {
   margin: 0 -20px !important;
   padding: 8px 8px 8px !important;
 }
-html:not([data-skin-pack]) .chat-app .page-body:has(.chat-contacts-top) {
+html:not([data-skin-pack]) .chat-app .chat-contacts-page > .page-body {
   background: var(--wx-list-bg) !important;
 }
 /* 入口行的彩色方图标（新的朋友 / 全部 / 私聊 / 群聊） */
@@ -408,18 +408,18 @@ html .chat-app .wx-entry-check {
   flex-shrink: 0;
   margin-left: auto;
 }
-html:not([data-skin-pack]) .chat-app .page-body:has(.chat-contacts-top) .minimal-list-item {
+html:not([data-skin-pack]) .chat-app .chat-contacts-page > .page-body .minimal-list-item {
   padding: 8px 16px !important;
 }
-html:not([data-skin-pack]) .chat-app .page-body:has(.chat-contacts-top) .minimal-list-item::after {
+html:not([data-skin-pack]) .chat-app .chat-contacts-page > .page-body .minimal-list-item::after {
   left: 68px;
 }
-html:not([data-skin-pack]) .chat-app .page-body:has(.chat-contacts-top) .minimal-avatar-wrapper {
+html:not([data-skin-pack]) .chat-app .chat-contacts-page > .page-body .minimal-avatar-wrapper {
   width: 40px !important;
   height: 40px !important;
   border-radius: 4px !important;
 }
-html:not([data-skin-pack]) .chat-app .page-body:has(.chat-contacts-top) .mb-3 {
+html:not([data-skin-pack]) .chat-app .chat-contacts-page > .page-body .mb-3 {
   margin: 0 !important;
 }
 /* 字母分组标题：微信的浅灰小条 */
@@ -466,7 +466,7 @@ html:not([data-skin-pack]) .chat-app .chat-quote-preview {
 html:not([data-skin-pack]) .chat-app .chat-bubble-role-user .chat-quote-preview { right: 0; }
 html:not([data-skin-pack]) .chat-app .chat-bubble-role-assistant .chat-quote-preview { left: 0; }
 /* 给引用小框让出位置，免得压到下一条消息 */
-html:not([data-skin-pack]) .chat-app :is(.chat-bubble-role-user, .chat-bubble-role-assistant):has(.chat-quote-preview) {
+html:not([data-skin-pack]) .chat-app .chat-bubble-has-quote {
   margin-bottom: 40px !important;
 }
 
