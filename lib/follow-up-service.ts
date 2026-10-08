@@ -246,13 +246,43 @@ export async function requestBackgroundChatReply(sessionId: string): Promise<{ o
     }
 }
 
+// 「重挂冷场重连的服务端预约」要把整段聊天上下文重新拼一遍（世界书、预设、正则……），
+// 是一件很重的同步活。原来它紧跟在「用户发消息」后面立刻执行，会把刚发出去的气泡堵住
+// 几百毫秒画不出来。这里改成：最后一次发送后等几秒、页面空闲了再做；连发多条只做最后一次；
+// 页面要切到后台/关闭前立刻补做，保证预约不丢。
+type IdleRearmRule = Parameters<typeof armIdleReconnectBailout>[0];
+const IDLE_REARM_DELAY_MS = 6000;
+const pendingIdleRearm = new Map<string, { rule: IdleRearmRule; timer: ReturnType<typeof setTimeout> }>();
+let idleRearmFlushBound = false;
+
+function runIdleRearm(sessionId: string) {
+    const entry = pendingIdleRearm.get(sessionId);
+    if (!entry) return;
+    clearTimeout(entry.timer);
+    pendingIdleRearm.delete(sessionId);
+    void armIdleReconnectBailout(entry.rule);
+}
+
+function scheduleIdleReconnectRearm(sessionId: string, rule: IdleRearmRule) {
+    const prev = pendingIdleRearm.get(sessionId);
+    if (prev) clearTimeout(prev.timer);
+    const timer = setTimeout(() => runIdleRearm(sessionId), IDLE_REARM_DELAY_MS);
+    pendingIdleRearm.set(sessionId, { rule, timer });
+    if (!idleRearmFlushBound && typeof document !== "undefined") {
+        idleRearmFlushBound = true;
+        const flush = () => { for (const id of Array.from(pendingIdleRearm.keys())) runIdleRearm(id); };
+        document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flush(); });
+        window.addEventListener("pagehide", flush);
+    }
+}
+
 /** Cancel any pending follow-up for a session (called when user sends a message). */
 export function cancelFollowUp(sessionId: string) {
     clearFollowUpSchedule(sessionId);
     cancelFollowUpBailout(sessionId);
     // 用户发了消息：冷场重连计数清零，按新周期重挂服务端预约
     const idleRule = resetIdleReconnectForSession(sessionId);
-    if (idleRule) void armIdleReconnectBailout({ ...idleRule, consecutiveCount: 0 });
+    if (idleRule) scheduleIdleReconnectRearm(sessionId, { ...idleRule, consecutiveCount: 0 });
     // If an API call is already in-flight, mark it for cancellation
     if (firingSet.has(sessionId)) {
         cancelledWhileFiring.add(sessionId);
