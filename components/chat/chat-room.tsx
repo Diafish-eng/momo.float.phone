@@ -835,20 +835,21 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
                         <circle cx="12" cy="10" r="3" />
                     </svg>
                 </button>
-                <button onClick={onToggleEmojiPanel} disabled={inputLocked} className="ui-bare-btn text-[var(--c-text)]" style={inputLocked ? { opacity: 0.35 } : undefined}>
+                <button onClick={onToggleEmojiPanel} disabled={inputLocked} className="ui-bare-btn text-[var(--c-text)] chat-tool-emoji" style={inputLocked ? { opacity: 0.35 } : undefined}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>
                 </button>
-                <button onClick={onToggleStickerPanel} disabled={inputLocked} className="ui-bare-btn text-[var(--c-text)]" style={inputLocked ? { opacity: 0.35 } : undefined}>
+                <button onClick={onToggleStickerPanel} disabled={inputLocked} className="ui-bare-btn text-[var(--c-text)] chat-tool-sticker" style={inputLocked ? { opacity: 0.35 } : undefined}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z" /><polyline points="14 3 14 8 21 8" /><path d="M8 13h0" /><path d="M16 13h0" /><path d="M10 17c.5.3 1.2.5 2 .5s1.5-.2 2-.5" /></svg>
                 </button>
-                <button onClick={onTogglePlusMenu} disabled={inputLocked} className="ui-bare-btn text-[var(--c-text)]" style={inputLocked ? { opacity: 0.35 } : undefined}>
+                <button onClick={onTogglePlusMenu} disabled={inputLocked} className="ui-bare-btn text-[var(--c-text)] chat-tool-plus" style={inputLocked ? { opacity: 0.35 } : undefined}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg>
                 </button>
                 <button
                     onClick={handleSubmit}
                     disabled={!isGenerating && (inputLocked || !inputText.trim())}
                     style={inputLocked && !isGenerating ? { opacity: 0.35 } : undefined}
-                    className="ui-bare-btn text-[var(--c-text)]"
+                    className="ui-bare-btn text-[var(--c-text)] chat-tool-send"
+                    {...(isGenerating ? { "data-generating": "" } : {})}
                     aria-label={isGenerating ? "停止本轮生成" : "发送"}
                     title={isGenerating ? "停止本轮生成" : "发送"}
                 >
@@ -863,7 +864,7 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
                 </button>
                 {!isGenerating && (
                     <button
-                        className="ui-bare-btn text-[var(--c-text)]"
+                        className="ui-bare-btn text-[var(--c-text)] chat-tool-reply"
                         title={!inputLocked && inputText.trim() ? "发送输入框内容并触发回复" : "触发 AI 主动回复"}
                         onClick={() => {
                             const trimmed = inputText.trim();
@@ -1039,7 +1040,7 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
                     type="button"
                     onClick={onToggleOfflineMode}
                     disabled={isOfflineGenerating}
-                    className="ui-bare-btn text-[var(--c-text)]"
+                    className="ui-bare-btn text-[var(--c-text)] chat-offline-toggle"
                     aria-label="返回线上模式"
                     title="返回线上模式"
                 >
@@ -1052,7 +1053,7 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
                 <button
                     onClick={onToggleEmojiPanel}
                     disabled={isSpectator}
-                    className="ui-bare-btn text-[var(--c-text)]"
+                    className="ui-bare-btn text-[var(--c-text)] chat-tool-emoji"
                     style={isSpectator ? { opacity: 0.35 } : undefined}
                     aria-label="表情"
                     title="表情"
@@ -1063,7 +1064,7 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
                     type="button"
                     onClick={() => { if (isOfflineGenerating) onStopGeneration(); else handleSubmit(); }}
                     disabled={!isOfflineGenerating && !isSpectator && !inputText.trim()}
-                    className="ui-bare-btn text-[var(--c-text)]"
+                    className="ui-bare-btn text-[var(--c-text)] chat-tool-send-offline"
                     aria-label={isOfflineGenerating ? "停止线下生成" : "发送"}
                     title={isOfflineGenerating ? "停止线下生成" : "发送"}
                 >

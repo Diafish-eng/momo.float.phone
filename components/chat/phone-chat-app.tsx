@@ -305,7 +305,7 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
                     onClick={() => setActiveTab("feeds")}
                 >
                     <CompassIcon active={activeTab === "feeds"} />
-                    <span style={{ fontSize: "calc(10px*var(--app-text-scale,1))", color: activeTab === "feeds" ? undefined : "var(--c-text)" }}>动态</span>
+                    <span style={{ fontSize: "calc(10px*var(--app-text-scale,1))", color: activeTab === "feeds" ? undefined : "var(--c-text)" }}>发现</span>
                 </button>
                 <button
                     className={`chat-tab ${activeTab === "me" ? "chat-tab-active" : ""}`}

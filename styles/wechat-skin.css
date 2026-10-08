@@ -1,33 +1,48 @@
 /* ════════════════════════════════════════════════════════════════
-   原生微信外观（可开关 · 作用域隔离）
+   原生微信外观
    ────────────────────────────────────────────────────────────────
-   设计原则：所有样式都锁在 html[data-skin="wechat"] 下。
-   - 开关「原生微信外观」关闭时 → 这里一条都不生效 → App 完全是原始样子
-     → 用户粘贴的第三方美化包照常工作，零冲突。
-   - 开关打开时 → 应用仿微信配色 + 深色跟随系统/手动开关。
-   深色由 data-theme 控制：dark=强制深、light=强制浅、未设=跟随系统。
+   1. 全局生效：聊天 App（.chat-app）的顶栏 / 气泡 / 头像 / 输入栏 / 底部 tab
+      直接做成微信的样子，不挂开关。
+   2. 深浅：html[data-theme="dark"|"light"]，由 layout.tsx 的开屏脚本设置
+      （手动选了就按手动，没选就跟随系统），所以这里只写 dark 一套即可。
+   3. 只有「输入框那排工具栏的微信布局」挂在 html[data-wx-toolbar="on"] 下：
+      第三方美化包是照 Float 原生工具栏写的，关掉开关工具栏就是原生布局。
    ════════════════════════════════════════════════════════════════ */
 
-/* ── 仿微信 · 浅色（开关开、非深色时） ── */
-html[data-skin="wechat"] {
-  --c-header-bg: #EDEDED;
-  --c-page-body-bg: #EDEDED;
-  --c-card: rgba(255, 255, 255, 0.92);
-  --c-card-border: #E2E2E2;
-  --c-panel: #F7F7F7;
-  --c-panel-border: #E2E2E2;
-  --c-text-title: #1A1A1A;
-  --c-text: #8A8A8A;
-  --c-icon-active: #07C160;   /* 微信绿 */
-  --c-icon: #9A9A9A;
-  --c-input: #FFFFFF;
-  --c-bubble-self: #95EC69;   /* 微信己方绿气泡 */
-  --c-bubble-other: #FFFFFF;  /* 对方白气泡 */
+/* ── 微信色板（浅色） ── */
+.chat-app {
+  --wx-nav: #EDEDED;
+  --wx-chat-bg: #EDEDED;
+  --wx-bar: #F7F7F7;
+  --wx-field: #FFFFFF;
+  --wx-line: rgba(0, 0, 0, 0.1);
+  --wx-text: rgba(0, 0, 0, 0.9);
+  --wx-sub: rgba(0, 0, 0, 0.5);
+  --wx-self: #95EC69;
+  --wx-self-text: rgba(0, 0, 0, 0.9);
+  --wx-other: #FFFFFF;
+  --wx-other-text: rgba(0, 0, 0, 0.9);
+  --wx-green: #07C160;
 }
 
-/* ── 仿微信 · 深色 ── 共用变量块，手动深色 + 跟随系统都复用 ── */
-html[data-skin="wechat"][data-theme="dark"] {
-  --c-header-bg: #1A1A1A;
+/* ── 微信色板（深色） ── */
+html[data-theme="dark"] .chat-app {
+  --wx-nav: #191919;
+  --wx-chat-bg: #111111;
+  --wx-bar: #1E1E1E;
+  --wx-field: #2C2C2C;
+  --wx-line: rgba(255, 255, 255, 0.08);
+  --wx-text: rgba(255, 255, 255, 0.85);
+  --wx-sub: rgba(255, 255, 255, 0.5);
+  --wx-self: #3EB575;
+  --wx-self-text: rgba(0, 0, 0, 0.9);
+  --wx-other: #2C2C2C;
+  --wx-other-text: rgba(255, 255, 255, 0.85);
+}
+
+/* ── 深色：整个 App 的基础色变量一起变暗（聊天以外的页面也跟着暗） ── */
+html[data-theme="dark"] {
+  --c-header-bg: #191919;
   --c-page-body-bg: #111111;
   --c-card: rgba(44, 44, 46, 0.72);
   --c-card-border: #2A2A2C;
@@ -42,140 +57,201 @@ html[data-skin="wechat"][data-theme="dark"] {
   --c-input: #2C2C2E;
   --c-input-border: rgba(60, 60, 62, 0);
   --c-bubble-self: #3EB575;
-  --c-bubble-other: #2C2C2E;
+  --c-bubble-other: #2C2C2C;
   --c-calendar-bg: #1E1E1E;
   color-scheme: dark;
 }
-/* 开关开 + 未手动选浅色 + 系统深色 → 自动深色 */
-@media (prefers-color-scheme: dark) {
-  html[data-skin="wechat"]:not([data-theme="light"]) {
-    --c-header-bg: #1A1A1A;
-    --c-page-body-bg: #111111;
-    --c-card: rgba(44, 44, 46, 0.72);
-    --c-card-border: #2A2A2C;
-    --c-polaroid: #2C2C2E;
-    --c-polaroid-back: #1E1E1E;
-    --c-panel: #1E1E1E;
-    --c-panel-border: #2A2A2C;
-    --c-text-title: #EDEDED;
-    --c-text: #9A9A9A;
-    --c-icon-active: #07C160;
-    --c-icon: #6E6E6E;
-    --c-input: #2C2C2E;
-    --c-input-border: rgba(60, 60, 62, 0);
-    --c-bubble-self: #3EB575;
-    --c-bubble-other: #2C2C2E;
-    --c-calendar-bg: #1E1E1E;
-    color-scheme: dark;
-  }
+
+/* ════════════ 顶栏：实色、细分割线、标题居中加粗 ════════════ */
+html .chat-app .page-shell:not(.moments-feed-page) > .page-header {
+  background: var(--wx-nav) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: 0.5px solid var(--wx-line) !important;
+  box-shadow: none !important;
+}
+html .chat-app .page-shell:not(.moments-feed-page) > .page-header .page-title {
+  color: var(--wx-text) !important;
+  font-weight: 600 !important;
+  font-size: calc(17px * var(--app-text-scale, 1)) !important;
+}
+html .chat-app .page-shell:not(.moments-feed-page) > .page-header .page-back-btn {
+  color: var(--wx-text) !important;
 }
 
-/* ── 深色下己方气泡文字压深，像微信 ── */
-html[data-skin="wechat"][data-theme="dark"] .chat-bubble-self,
-html[data-skin="wechat"][data-theme="dark"] .bubble-self {
-  color: #0B1F12;
+/* ════════════ 聊天页背景 ════════════ */
+/* 没设壁纸：微信纯色底 */
+html .chat-app .chat-room-wrapper:not([data-has-bg-image]) {
+  background-color: var(--wx-chat-bg) !important;
 }
-@media (prefers-color-scheme: dark) {
-  html[data-skin="wechat"]:not([data-theme="light"]) .chat-bubble-self,
-  html[data-skin="wechat"]:not([data-theme="light"]) .bubble-self {
-    color: #0B1F12;
-  }
-}
-
-/* ── 深色下把聊天壁纸压暗（保留壁纸、盖一层暗罩），内容照常清晰，像微信 ──
-   壁纸是写在 .chat-room-wrapper 行内样式上的，用 inset box-shadow 盖暗罩：
-   它画在背景图之上、子内容（气泡/文字）之下，所以壁纸变暗但聊天内容不受影响。 */
-html[data-skin="wechat"][data-theme="dark"] .chat-room-wrapper[data-has-bg-image] {
+/* 设了壁纸 + 深色：保留壁纸，盖一层暗罩（inset 阴影画在壁纸之上、内容之下） */
+html[data-theme="dark"] .chat-app .chat-room-wrapper[data-has-bg-image] {
   box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.55) !important;
 }
-@media (prefers-color-scheme: dark) {
-  html[data-skin="wechat"]:not([data-theme="light"]) .chat-room-wrapper[data-has-bg-image] {
-    box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.55) !important;
-  }
+
+/* ════════════ 头像：方形小圆角 ════════════ */
+html .chat-app .chat-msg-avatar,
+html .chat-app .chat-msg-avatar > div,
+html .chat-app .chat-msg-avatar img {
+  border-radius: 4px !important;
+}
+html .chat-app .chat-room-wrapper .chat-msg-wrapper {
+  gap: 10px !important;
+}
+
+/* ════════════ 气泡：微信小圆角 + 小尾巴 ════════════
+   媒体气泡（图片/表情包/礼物）和独立 HTML 预览不套气泡底色。 */
+html .chat-app :is(.chat-bubble-role-user, .chat-bubble-role-assistant):not(.chat-bubble-media):not(.chat-bubble-html-preview) {
+  position: relative;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  padding: 9px 12px !important;
+  font-size: calc(16px * var(--app-text-scale, 1)) !important;
+  line-height: 1.45 !important;
+  overflow: visible !important;
+}
+html .chat-app .chat-bubble-role-user:not(.chat-bubble-media):not(.chat-bubble-html-preview) {
+  background: var(--wx-self) !important;
+  color: var(--wx-self-text) !important;
+}
+html .chat-app .chat-bubble-role-assistant:not(.chat-bubble-media):not(.chat-bubble-html-preview) {
+  background: var(--wx-other) !important;
+  color: var(--wx-other-text) !important;
+}
+/* 小尾巴：一个旋转 45° 的小方块，颜色继承气泡 */
+html .chat-app :is(.chat-bubble-role-user, .chat-bubble-role-assistant):not(.chat-bubble-media):not(.chat-bubble-html-preview)::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  width: 9px;
+  height: 9px;
+  background: inherit;
+  border-radius: 1.5px;
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+html .chat-app .chat-bubble-role-user:not(.chat-bubble-media):not(.chat-bubble-html-preview)::after {
+  right: -4px;
+}
+html .chat-app .chat-bubble-role-assistant:not(.chat-bubble-media):not(.chat-bubble-html-preview)::after {
+  left: -4px;
+}
+
+/* ════════════ 输入栏：实色底 + 白色（深色为深灰）输入框 ════════════ */
+html .chat-app .chat-input-bar {
+  background: var(--wx-bar) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-top: 0.5px solid var(--wx-line) !important;
+}
+html .chat-app .chat-input-bar .chat-input-textarea {
+  background: var(--wx-field) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  color: var(--wx-text) !important;
+  caret-color: var(--wx-green);
+}
+html .chat-app .chat-input-bar .chat-input-actions .ui-bare-btn {
+  color: var(--wx-text) !important;
+}
+
+/* ════════════ 底部 tab 栏：实色，选中微信绿 ════════════ */
+html .chat-app .chat-tab-bar {
+  background: var(--wx-bar) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-top: 0.5px solid var(--wx-line) !important;
+  box-shadow: none !important;
+}
+html .chat-app .chat-tab {
+  color: var(--wx-text) !important;
+}
+html .chat-app .chat-tab span {
+  color: inherit !important;
+}
+html .chat-app .chat-tab.chat-tab-active {
+  color: var(--wx-green) !important;
+}
+
+/* ════════════ 会话列表：方形头像 ════════════ */
+html .chat-app .minimal-avatar-wrapper,
+html .chat-app .minimal-avatar-wrapper img {
+  border-radius: 6px !important;
 }
 
 /* ════════════════════════════════════════════════════════════════
-   微信版式 v1：气泡 + 底部栏（全部锁在 data-skin=wechat 下）
+   工具栏微信布局（仅此一段挂开关 data-wx-toolbar="on"）
+   原生：输入框一行，下面一排 6 个图标。
+   微信：[线下] [ 输入框 (回复) ] [表情] [表情包] [＋] 一行。
+   - 「线下模式」放在左边原语音键的位置，图标形状不变
+   - 「让角色回复」叠在输入框内右侧；生成中时同一位置变成「停止」
+   - 发送键隐藏（用键盘发送）
    ════════════════════════════════════════════════════════════════ */
-
-/* ── 气泡：微信风小圆角、去阴影；己方绿气泡用深色字（原来写死白字不对） ── */
-html[data-skin="wechat"] .chat-bubble-role-user,
-html[data-skin="wechat"] .chat-bubble-role-assistant {
-  border-radius: 6px !important;
-  box-shadow: none !important;
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-bar {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) 0px auto auto auto;
+  grid-auto-flow: row dense;
+  align-items: end;
+  padding: 8px 10px max(8px, env(safe-area-inset-bottom, 0px)) !important;
 }
-html[data-skin="wechat"] .chat-bubble-role-user {
-  color: #1A1A1A !important;   /* 微信绿气泡上的深色字 */
+/* 剧场条、引用条、表情/加号面板等：各占一整行 */
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-bar > * {
+  grid-column: 1 / -1;
 }
-html[data-skin="wechat"] .chat-bubble-role-assistant {
-  color: #1A1A1A !important;
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-bar > .chat-input-actions {
+  display: contents !important;
 }
-/* 深色下字色 */
-html[data-skin="wechat"][data-theme="dark"] .chat-bubble-role-user {
-  color: #0B1F12 !important;
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-bar > .chat-input-textarea {
+  grid-column: 2;
+  width: auto !important;
+  min-height: 40px;
+  margin: 0 0 0 10px !important;
+  padding: 9px 40px 9px 12px !important;
 }
-html[data-skin="wechat"][data-theme="dark"] .chat-bubble-role-assistant {
-  color: #EDEDED !important;
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .ui-bare-btn {
+  width: 28px;
+  height: 28px;
+  margin: 0 0 6px 10px;
+  padding: 0;
+  align-self: end;
 }
-@media (prefers-color-scheme: dark) {
-  html[data-skin="wechat"]:not([data-theme="light"]) .chat-bubble-role-user {
-    color: #0B1F12 !important;
-  }
-  html[data-skin="wechat"]:not([data-theme="light"]) .chat-bubble-role-assistant {
-    color: #EDEDED !important;
-  }
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions svg {
+  width: 28px !important;
+  height: 28px !important;
 }
-
-/* ── 底部 tab 栏：微信实色栏（原来是玻璃半透明，所以"浅到看不见"） ── */
-html[data-skin="wechat"] .chat-tab-bar {
-  background: var(--c-header-bg) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border-top: 0.5px solid var(--c-card-border) !important;
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .chat-offline-toggle {
+  grid-column: 1;
+  margin-left: 0;
 }
-
-/* ── 气泡颜色：直接强制背景（压过内置蓝气泡预设），高优先级 + !important ── */
-html[data-skin="wechat"] .chat-room-wrapper .chat-bubble-role-user {
-  background: #95EC69 !important;   /* 微信绿 */
-  color: #1A1A1A !important;
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .chat-tool-emoji {
+  grid-column: 4;
 }
-html[data-skin="wechat"] .chat-room-wrapper .chat-bubble-role-assistant {
-  background: #FFFFFF !important;   /* 对方白 */
-  color: #1A1A1A !important;
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .chat-tool-sticker {
+  grid-column: 5;
 }
-html[data-skin="wechat"][data-theme="dark"] .chat-room-wrapper .chat-bubble-role-user {
-  background: #3EB575 !important;   /* 深色己方绿 */
-  color: #0B1F12 !important;
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .chat-tool-plus {
+  grid-column: 6;
 }
-html[data-skin="wechat"][data-theme="dark"] .chat-room-wrapper .chat-bubble-role-assistant {
-  background: #2C2C2E !important;   /* 深色对方灰 */
-  color: #EDEDED !important;
+/* 回复键 / 生成中的停止键：0 宽列里用负外边距叠进输入框右侧 */
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .chat-tool-reply,
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .chat-tool-send[data-generating] {
+  grid-column: 3;
+  position: relative;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  margin: 0 0 8px -32px;
+  color: var(--wx-sub) !important;
 }
-@media (prefers-color-scheme: dark) {
-  html[data-skin="wechat"]:not([data-theme="light"]) .chat-room-wrapper .chat-bubble-role-user {
-    background: #3EB575 !important;
-    color: #0B1F12 !important;
-  }
-  html[data-skin="wechat"]:not([data-theme="light"]) .chat-room-wrapper .chat-bubble-role-assistant {
-    background: #2C2C2E !important;
-    color: #EDEDED !important;
-  }
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .chat-tool-reply svg,
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .chat-tool-send[data-generating] svg {
+  width: 24px !important;
+  height: 24px !important;
 }
-
-/* ── 顶部标题栏：实色不透明，像微信（原来透明/玻璃，深色下露出亮壁纸显白）── */
-html[data-skin="wechat"] .chat-app .chat-room-wrapper .page-header,
-html[data-skin="wechat"] .chat-app .chat-room-wrapper .page-header-content {
-  background: var(--c-header-bg) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .chat-tool-send:not([data-generating]) {
+  display: none !important;
 }
-html[data-skin="wechat"] .chat-app .chat-room-wrapper .page-title {
-  color: var(--c-text-title) !important;
-}
-
-/* ── 头像：微信方形圆角（原来是圆形 rounded-[20px]）── */
-html[data-skin="wechat"] .chat-msg-avatar,
-html[data-skin="wechat"] .chat-msg-avatar > div,
-html[data-skin="wechat"] .chat-msg-avatar img {
-  border-radius: 5px !important;
+/* 线下模式的输入栏：发送键保留在最右 */
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .chat-tool-send-offline {
+  grid-column: 6;
 }

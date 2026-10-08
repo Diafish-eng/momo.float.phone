@@ -30,12 +30,12 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <head>
-        {/* 开屏前恢复「原生微信外观」开关(data-skin)与深浅(data-theme)，避免刷新闪白。
-            skin='wechat' 时才应用仿微信样式；theme 'dark'/'light' 强制，未设=跟随系统。 */}
+        {/* 开屏前定好深/浅（data-theme）和工具栏布局（data-wx-toolbar），避免刷新闪白。
+            深浅：手动选过就按手动，没选就跟随系统，系统切换时实时跟着变。 */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var s=localStorage.getItem('float-skin');if(s==='wechat'){document.documentElement.setAttribute('data-skin','wechat');}var m=localStorage.getItem('float-theme-mode');if(m==='dark'||m==='light'){document.documentElement.setAttribute('data-theme',m);}}catch(e){}",
+              "(function(){try{var d=document.documentElement,q=window.matchMedia('(prefers-color-scheme: dark)');function a(){var m=localStorage.getItem('float-theme-mode');d.setAttribute('data-theme',(m==='dark'||m==='light')?m:(q.matches?'dark':'light'));}a();if(q.addEventListener){q.addEventListener('change',a);}if(localStorage.getItem('float-wx-toolbar')==='on'){d.setAttribute('data-wx-toolbar','on');}}catch(e){}})();",
           }}
         />
         <link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials" />
