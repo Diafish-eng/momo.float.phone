@@ -47,16 +47,61 @@ export function GestureController() {
     let stack: StackEntry[] = [];
     type PendingNav = { fromKey: string | null; home: boolean; clone: HTMLElement | null; scroll: number; done: boolean };
     const homeRects = new WeakMap<HTMLElement, { l: number; t: number; w: number; h: number }>();
-    const SNAPSHOT_MAX_NODES = 1200;
+    const SNAPSHOT_MAX_NODES = 2500;
 
-    const keyOf = (shell: HTMLElement) =>
-      (shell.querySelector(":scope > .page-header")?.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
+    const STD_BACK = ':scope > .page-header .page-back-btn[aria-label="返回"]';
+    const APP_BOX = ".phone-app-pane, .mini-app-window";
 
+    // 不是所有内置应用都用标准页面外壳。这里按「左上角的返回键」来认：
+    // 带 返回 字样的按钮、类名带 back 的按钮、或者里面是 ‹ / ← 图标的按钮，且真的显示在最上层。
+    const findBackButton = (root: HTMLElement): HTMLElement | null => {
+      try {
+        const box = root.getBoundingClientRect();
+        if (box.width === 0) return null;
+        const found = root.querySelectorAll<HTMLElement>(
+          '[aria-label^="返回"], .page-back-btn, button[class*="back"], svg.lucide-chevron-left, svg.lucide-arrow-left',
+        );
+        for (let i = found.length - 1; i >= 0; i--) {
+          const raw = found[i];
+          const el = raw.tagName.toLowerCase() === "svg" ? raw.closest<HTMLElement>('button, [role="button"], a') : raw;
+          if (!el || el.offsetParent === null) continue;
+          if ((el as HTMLButtonElement).disabled) continue;
+          const label = el.getAttribute("aria-label") || "";
+          if (label.includes("下拉") || el.closest(".swipe-back-under")) continue;
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.left - box.left > 110 || r.top - box.top > 170) continue;
+          const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          if (hit && (hit === el || el.contains(hit))) return el;
+        }
+      } catch { /* ignore */ }
+      return null;
+    };
+
+    // 一页的「身份」：顶栏里的文字（标题 + 按钮字样）。同一页回来时文字一样，就能在栈里认出来。
+    const keyOf = (root: HTMLElement) => {
+      let head: Element | null = root.querySelector(":scope > .page-header");
+      if (!head) {
+        const btn = findBackButton(root);
+        head = btn ? (btn.closest("header") ?? btn.parentElement) : null;
+      }
+      const text = (head?.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
+      return text || `#${root.className.toString().slice(0, 40)}`;
+    };
+
+    // 当前显示的那一页：有标准外壳就取最上面的外壳，没有就取整个应用容器
     const topShell = (): HTMLElement | null => {
       const all = document.querySelectorAll<HTMLElement>(".page-shell");
       for (let i = all.length - 1; i >= 0; i--) if (all[i].offsetParent !== null) return all[i];
+      const boxes = document.querySelectorAll<HTMLElement>(APP_BOX);
+      for (let i = boxes.length - 1; i >= 0; i--) if (boxes[i].offsetParent !== null) return boxes[i];
       return null;
     };
+
+    // 自带拖动/翻页手势的界面：只认从屏幕左边缘起手的右滑，免得抢它们的手势
+    const GESTURE_HEAVY =
+      'canvas, [draggable="true"], [class*="reading-viewer"], [class*="reading-pdf"], [class*="map-"], [class*="note-wall"], ' +
+      '[class*="room-view"], [class*="mixology"], [class*="mix-"], [class*="game"], [class*="vn-"], [class*="douyin"], ' +
+      '[class*="story-"], [class*="wb-"], [class*="swipe-action"]';
 
     const settleNav = (nav: PendingNav) => {
       if (nav.done) return;
@@ -84,10 +129,10 @@ export function GestureController() {
         const target = event.target;
         if (!(target instanceof Element)) return;
         if (target.closest("input, textarea, select, .swipe-back-under")) return;
-        const shell = target.closest<HTMLElement>(".page-shell");
+        const shell = target.closest<HTMLElement>(".page-shell") ?? target.closest<HTMLElement>(APP_BOX);
         let nav: PendingNav | null = null;
         if (shell) {
-          const goingBack = !!target.closest(".page-back-btn");
+          const goingBack = !!target.closest('.page-back-btn, [aria-label^="返回"]');
           const tooBig = shell.classList.contains("chat-room-wrapper") || shell.getElementsByTagName("*").length > SNAPSHOT_MAX_NODES;
           const body = shell.querySelector<HTMLElement>(":scope > .page-body");
           nav = {
@@ -179,9 +224,19 @@ export function GestureController() {
       velocity = 0;
 
       // —— 右滑返回的候选页面 ——
-      const shell = target.closest<HTMLElement>(".page-shell");
+      const realShell = target.closest<HTMLElement>(".page-shell");
+      const box = target.closest<HTMLElement>(APP_BOX);
+      let stdBtn = realShell ? realShell.querySelector<HTMLElement>(STD_BACK) : null;
+      let generic = false;
+      const shell = realShell ?? box;
+      if (!stdBtn && shell && box) {
+        // 没有标准返回键的页面（很多内置应用）：按左上角的返回键来认
+        stdBtn = findBackButton(shell);
+        generic = true;
+        if (stdBtn && target.closest(GESTURE_HEAVY) && startX - box.getBoundingClientRect().left > 30) stdBtn = null;
+      }
       if (shell) {
-        const btn = shell.querySelector<HTMLElement>(':scope > .page-header .page-back-btn[aria-label="返回"]');
+        const btn = stdBtn;
         if (btn && !isHorizontallyScrollable(target, shell)) {
           backBtn = btn;
           // 聊天 App 的四个 tab 根页面：返回 = 退出整个 App，所以整块一起动
@@ -202,10 +257,12 @@ export function GestureController() {
             const key = keyOf(shell);
             let idx = -1;
             for (let i = stack.length - 1; i >= 0; i--) { if (stack[i].key === key) { idx = i; break; } }
-            const isAppRoot = !!shell.closest(".chat-main-content") || idx === 0;
+            const isAppRoot = !!shell.closest(".chat-main-content") || idx === 0
+              || (idx < 0 && generic && (btn.getAttribute("aria-label") || "") === "返回桌面");
             if (isAppRoot) {
               // 应用首页：返回 = 退出应用，整个应用滑走，底下是主屏（带壁纸）
               const pane = shell.closest<HTMLElement>(".phone-app-pane");
+              if (generic && pane) pageEl = pane;
               const nodes = pane ? prevPages.get(pane) : undefined;
               const win = shell.closest<HTMLElement>(".mini-app-window");
               if (pane && nodes && nodes.length > 0 && !hasOtherPage(pane)) {
@@ -262,8 +319,12 @@ export function GestureController() {
           underClone.style.transform = "";
           underClone.style.transition = "";
           underClone.style.boxShadow = "";
+          underClone.style.position = "absolute";
+          underClone.style.inset = "0";
+          underClone.style.margin = "0";
           wrap.appendChild(underClone);
           cloneBody = underClone.querySelector<HTMLElement>(":scope > .page-body");
+          if (underClone.matches(APP_BOX)) underClone.style.display = getComputedStyle(pageEl).display;
         } else if (underNodes) {
           const phone = homeMode ? pageEl.closest<HTMLElement>(".phone-shell") : null;
           if (phone) {
@@ -384,6 +445,7 @@ export function GestureController() {
       if (mode === "pending") {
         if (Math.abs(dx) < DECIDE_SLOP && Math.abs(dy) < DECIDE_SLOP) return;
         if (Math.abs(dy) > Math.abs(dx)) { reset(); return; }   // 竖向滚动，不接管
+        if (event.defaultPrevented) { reset(); return; }        // 页面自己在处理这次滑动
         if (dx > 0 && pageEl) beginBack();
         else if (dx < 0 && rowEl) beginQuote();
         else { reset(); return; }
