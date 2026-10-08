@@ -346,3 +346,40 @@ html .chat-app .minimal-avatar-wrapper img {
 html .chat-app .minimal-online-dot {
   display: none !important;
 }
+
+/* ── 会话列表顶部：居中「微信」标题，去掉身份块 / 大标题 / 分类条（分类改到通讯录） ── */
+html .chat-app .page-header-content { position: relative; }
+html .chat-app .chat-list-wx-title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: calc(17px * var(--app-text-scale, 1));
+  font-weight: 600;
+  color: var(--wx-text);
+  pointer-events: none;
+}
+html .chat-app .chat-list-identity,
+html .chat-app .chat-list-heading,
+html .chat-app .page-body > .chat-list-tabs {
+  display: none !important;
+}
+html .chat-app .chat-list-top {
+  padding: 8px 8px 8px !important;
+  background: var(--wx-nav);
+}
+html .chat-app .chat-list-top .chat-search-bar {
+  background: var(--wx-field) !important;
+  justify-content: center;
+  padding: 7px 12px !important;
+}
+html .chat-app .chat-list-top .chat-search-input {
+  width: 3em !important;
+  flex: 0 1 auto;
+  text-align: left;
+}
+html .chat-app .chat-list-top .chat-search-bar:focus-within .chat-search-input,
+html .chat-app .chat-list-top .chat-search-input:not(:placeholder-shown) {
+  width: 100% !important;
+  flex: 1 1 auto;
+}

@@ -193,7 +193,8 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
                         <button className="page-back-btn shrink-0 mr-2" type="button" onClick={onCloseApp} aria-label="返回">
                             <ChevronLeft size={24} strokeWidth={1.5} />
                         </button>
-                        <div className="flex items-center gap-[10px]">
+                        <span className="chat-list-wx-title">微信</span>
+                        <div className="chat-list-identity flex items-center gap-[10px]">
                             <div className="w-[36px] h-[36px] rounded-full overflow-hidden bg-[var(--c-input)] flex items-center justify-center shrink-0">
                                 {identity?.avatarUrl ? (
                                     <img src={identity.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
@@ -258,15 +259,15 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
                     </span>
                 }
             >
-                <div className="px-5 pt-5 pb-3">
-                    <div className="flex items-center justify-between mb-4 mt-2">
+                <div className="chat-list-top px-5 pt-5 pb-3">
+                    <div className="chat-list-heading flex items-center justify-between mb-4 mt-2">
                         <span className="ts-28 font-bold text-[var(--c-text-title)]">Chats</span>
                     </div>
                     <div className="chat-search-bar">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-icon)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <input
                             className="chat-search-input ts-15 w-full bg-transparent outline-none text-[var(--c-text-title)] placeholder:text-[var(--c-icon)]"
-                            placeholder="Search chats..."
+                            placeholder="搜索"
                             value={listFilter}
                             onChange={(e) => setListFilter(e.target.value)}
                         />
