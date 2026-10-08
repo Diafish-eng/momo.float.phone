@@ -375,13 +375,23 @@ export function GestureController() {
           }
         }
         if (!groups) return;
-        groups.forEach((group) => {
-          if (group.added.length === 0 || group.removed.length === 0) return;
+        const all = groups;
+        const minHeight = window.innerHeight * 0.6;
+        all.forEach((group, target) => {
+          if (group.added.length === 0) return;
+          // 被顶掉的旧节点：同一个父节点里移出的，加上外层父节点里同时移出的（比如主屏底部的 Dock）
           const removed = group.removed.filter((n) => !n.isConnected);
+          all.forEach((other, otherTarget) => {
+            if (otherTarget === target || !otherTarget.contains(target)) return;
+            for (const n of other.removed) if (!n.isConnected) removed.push(n);
+          });
           if (removed.length === 0) return;
           for (const a of group.added) {
             if (!a.isConnected) continue;
-            if (a.classList.contains("page-shell") || a.querySelector(".page-shell")) prevPages.set(a, removed);
+            // 新页面：自己带页面外壳，或者是一整屏大小的容器（内容可能稍后才挂进来）
+            if (a.classList.contains("page-shell") || a.querySelector(".page-shell") || a.offsetHeight >= minHeight) {
+              prevPages.set(a, removed);
+            }
           }
         });
       } catch { /* 记录失败只是少一个同屏效果 */ }
