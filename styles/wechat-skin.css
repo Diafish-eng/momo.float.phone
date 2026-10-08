@@ -40,8 +40,11 @@ html[data-theme="dark"] .chat-app {
   --wx-other-text: rgba(255, 255, 255, 0.85);
 }
 
-/* ── 深色：整个 App 的基础色变量一起变暗（聊天以外的页面也跟着暗） ── */
-html[data-theme="dark"] {
+/* ── 深色：整个 App 的基础色变量一起变暗。
+   注意 tokens.css 给 .chat-app 单独定义了一套独立色板（与全局隔离），
+   所以聊天 App 这一层必须再写一遍，否则聊天里收不到深色。 ── */
+html[data-theme="dark"],
+html[data-theme="dark"] .chat-app {
   --c-header-bg: #191919;
   --c-page-body-bg: #111111;
   --c-card: rgba(44, 44, 46, 0.72);
