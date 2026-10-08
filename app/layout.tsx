@@ -6,6 +6,7 @@ import { ChatReasoningVisibilityController } from "@/components/chat-reasoning-v
 import { CSSImportEnhancer } from "@/components/css-import-enhancer";
 import { PWAManifestInjector } from "@/components/pwa-manifest-injector";
 import { PWARegistrar } from "@/components/pwa-registrar";
+import { GestureController } from "@/components/gesture-controller";
 import "../styles/fonts.css";
 import "./globals.css";
 
@@ -53,6 +54,7 @@ export default function RootLayout({
         <CSSImportEnhancer />
         <ChatPluginBootstrap />
         <ChatReasoningVisibilityController />
+        <GestureController />
         {children}
       </body>
     </html>

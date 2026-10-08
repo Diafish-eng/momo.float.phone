@@ -1,5 +1,6 @@
 "use client";
 
+import { resolveQuoteName } from "@/lib/quote-name";
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { findCustomStickerByName, resolveCustomStickerUrl } from "@/lib/custom-sticker-storage";
 import { isMediaStoreRef, loadMediaObjectUrl } from "@/lib/media-cache-storage";
@@ -1661,11 +1662,12 @@ function StickerBubble({ msg, characterId }: { msg: ChatMessage; characterId?: s
 
 function QuoteBubble({ msg, displayContent, defaultTranslationExpanded = false }: { msg: ChatMessage; displayContent?: string; defaultTranslationExpanded?: boolean }) {
     const d = msg.mediaData;
+    const quoteName = resolveQuoteName({ quoteRole: d?.quoteRole, quoteSenderName: d?.quoteSenderName, messageRole: msg.role });
     return (
         <div className="chat-quote-message max-w-full">
             {d?.quotePreview && (
                 <div className="chat-quote-preview bg-black/[0.06] border-l-[3px] border-l-black/15 px-2.5 py-1.5 ts-12 text-[var(--c-icon)] mb-1.5 rounded-r-[6px] truncate max-w-full">
-                    {d.quotePreview}
+                    {quoteName ? `${quoteName}：` : ""}{d.quotePreview}
                 </div>
             )}
             {msg.content && <TextBubble content={displayContent ?? msg.content} defaultTranslationExpanded={defaultTranslationExpanded} />}

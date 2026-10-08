@@ -16,6 +16,7 @@ import { loadChatAppSettings, saveChatAppSettings } from "@/lib/chat-storage";
 import type { UserIdentity } from "@/components/settings/user-identity";
 import { getApiLogs, clearApiLogs, type DebugInfo } from "@/lib/chat-engine";
 import type { FollowUpConfig } from "@/lib/settings-storage";
+import { getQuoteNameMode, setQuoteNameMode } from "@/lib/quote-name";
 import { PageShell } from "@/components/ui/page-shell";
 import { CHAT_APP_CSS_EXAMPLE } from "@/lib/css-examples";
 import { Toggle } from "@/components/ui/form";
@@ -173,6 +174,7 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
     const [callVibrationEnabled, setCallVibrationEnabled] = useState(true);
     const [themeDark, setThemeDark] = useState(false);
     const [skinWechat, setSkinWechat] = useState(false);
+    const [quoteUseRemark, setQuoteUseRemark] = useState(true);
     const [userStats, setUserStats] = useState({ chats: 0, moments: 0, visitors: 1234 });
     const [walletSummary, setWalletSummary] = useState(() => {
         const wallet = loadWalletState();
@@ -186,6 +188,7 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
     useEffect(() => {
         try {
             setSkinWechat(localStorage.getItem("float-wx-toolbar") === "on");
+            setQuoteUseRemark(getQuoteNameMode() === "remark");
             const m = localStorage.getItem("float-theme-mode");
             if (m === "dark") setThemeDark(true);
             else if (m === "light") setThemeDark(false);
@@ -554,6 +557,15 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
                                 <span className="ts-11 text-[var(--c-text)] opacity-70">开=深色、关=浅色；没手动选过时跟随系统</span>
                             </div>
                             <Toggle checked={themeDark} onChange={handleThemeDarkToggle} />
+                        </div>
+
+                        <div className="flex items-center gap-3 py-3 w-full border-b border-[color-mix(in_srgb,var(--c-card-border)_20%,transparent)]">
+                            <MessageSquareDashed size={18} className="text-[var(--c-icon)] opacity-70" strokeWidth={1.25}/>
+                            <div className="flex flex-col flex-1 text-left gap-0.5">
+                                <span className="ts-14 font-semibold text-[var(--c-text-title)]">引用显示备注名</span>
+                                <span className="ts-11 text-[var(--c-text)] opacity-70">开=引用里对方显示你给 TA 的备注；关=显示对方本名</span>
+                            </div>
+                            <Toggle checked={quoteUseRemark} onChange={(enabled) => { setQuoteUseRemark(enabled); setQuoteNameMode(enabled ? "remark" : "real"); }} />
                         </div>
 
                         <div className="flex items-center gap-3 py-3 w-full border-b border-[color-mix(in_srgb,var(--c-card-border)_20%,transparent)]">

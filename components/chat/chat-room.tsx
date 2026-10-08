@@ -61,6 +61,7 @@ import { findPlayableMatch, getNeteaseLyrics, getNeteaseSongDetail } from "@/lib
 import { approveMemoryWriteRequest } from "@/lib/tool-executor";
 import type { MemoryWriteRequest, ToolResult } from "@/lib/tool-executor";
 import { formatChatUiTime, formatChatShortTime, formatChatFullTime } from "@/lib/chat-time";
+import { setQuoteNameContext } from "@/lib/quote-name";
 import { parseActionTags } from "@/lib/action-parser";
 import { kvGet, kvSet, kvRemove } from "@/lib/kv-db";
 import { creditWalletBalance, payWithWalletBalance } from "@/lib/wallet-storage";
@@ -1158,6 +1159,16 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     const [mediaDetailMsg, setMediaDetailMsg] = useState<ChatMessage | null>(null);
     // Quote reply
     const [quotingMessage, setQuotingMessage] = useState<ChatMessage | null>(null);
+    // 左滑某条消息触发引用（手势在 components/gesture-controller.tsx，这里只负责接住）
+    useEffect(() => {
+        const onSwipeQuote = (event: Event) => {
+            const id = (event as CustomEvent<{ messageId?: string }>).detail?.messageId;
+            const target = id ? messages.find(m => m.id === id) : undefined;
+            if (target && (target.role === "user" || target.role === "assistant")) setQuotingMessage(target);
+        };
+        window.addEventListener("chat-swipe-quote", onSwipeQuote);
+        return () => window.removeEventListener("chat-swipe-quote", onSwipeQuote);
+    }, [messages]);
     // Emoji panel
     const [showEmojiPanel, setShowEmojiPanel] = useState(false);
     const [showStickerPanel, setShowStickerPanel] = useState(false);
@@ -4062,6 +4073,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             quoteMessageId: quotingMessage.id,
             quotePreview: quotingMessage.content.slice(0, 50),
             quoteRole: quotingMessage.role,
+            quoteSenderName: quotingMessage.senderName,
         } : undefined;
         setQuotingMessage(null);
 
@@ -5569,6 +5581,14 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     }
     // 单聊语音/视频通话改为在下方主返回内联渲染（而非提前 return），
     // 这样缩小为悬浮窗时聊天页与通话组件可以同时挂载，通话状态（计时/字幕）不会丢失。
+
+    // 登记当前会话的名字，供引用小框显示「名字：内容」
+    setQuoteNameContext({
+        userName: userIdentity?.name || "我",
+        charName: character?.name || "",
+        charRemark: session.alias || "",
+        isGroup: !!session.isGroup,
+    });
 
     const chatRoomBackgroundStyle = bgImageResolved ? {
         backgroundColor: "#fff",

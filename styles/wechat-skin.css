@@ -484,3 +484,26 @@ html .chat-app .chat-time-chip {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+
+/* ════════════ 左滑引用时消息右侧露出的图标 ════════════ */
+.chat-swipe-quote-icon {
+  position: absolute;
+  right: -44px;
+  top: 50%;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(127, 127, 127, 0.22);
+  color: var(--wx-sub, rgba(0, 0, 0, 0.5));
+  opacity: 0;
+  transform: translateY(-50%) scale(0.6);
+  pointer-events: none;
+  transition: background-color 0.12s, color 0.12s;
+}
+.chat-swipe-quote-icon[data-armed] {
+  background: var(--wx-green, #07C160);
+  color: #fff;
+}
