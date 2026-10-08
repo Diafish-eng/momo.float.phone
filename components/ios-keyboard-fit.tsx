@@ -28,7 +28,10 @@ export function IosKeyboardFit() {
     const ua = navigator.userAgent;
     const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const vv = window.visualViewport;
-    if (!isIOS || !vv) return;
+    // 调试开关：在电脑浏览器里也启用这套逻辑，方便用模拟触摸排查（正常使用不会打开）
+    let forced = false;
+    try { forced = localStorage.getItem("float-ios-kb-debug") === "1"; } catch { /* ignore */ }
+    if ((!isIOS && !forced) || !vv) return;
 
     const root = document.documentElement;
     let active = false;
