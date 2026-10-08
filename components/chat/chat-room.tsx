@@ -671,6 +671,7 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
 }, ref) {
     const [inputText, setInputText] = useState("");
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+    const justSentRef = useRef<{ text: string; until: number } | null>(null);
     // 表情包搜索联想：ESC/失焦置 true 隐藏，输入变化重新开启
     const [suggestClosed, setSuggestClosed] = useState(false);
     // 围观群/被禁言：输入与富媒体入口全部锁定，只留线下切换和生成按钮
@@ -715,6 +716,8 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
         const trimmed = inputText.trim();
         if (!trimmed) return;
         if (!onSendText(trimmed)) return;
+        // iOS 中文输入法偶尔会在发送后把最后一段候选词又「补」回输入框，记下刚发的内容用来识别
+        justSentRef.current = { text: trimmed, until: Date.now() + 400 };
         setInputText("");
         resetTextareaHeight();
         onClosePanels();
@@ -792,6 +795,13 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
                 rows={1}
                 value={inputText}
                 onChange={e => {
+                    const sent = justSentRef.current;
+                    if (sent && Date.now() < sent.until && e.target.value && sent.text.endsWith(e.target.value)) {
+                        // 发送后瞬间冒出来、且正好是刚发内容结尾的那段字：是输入法补回来的，不是用户新打的
+                        e.target.value = "";
+                        setInputText("");
+                        return;
+                    }
                     setInputText(e.target.value);
                     setSuggestClosed(false);
                     e.target.style.height = "auto";
