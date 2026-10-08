@@ -262,9 +262,6 @@ export function GestureController() {
             navEl = app.querySelector<HTMLElement>(":scope > .chat-tab-bar");
           } else {
             // 其它页面：按「页面栈」决定底下垫什么
-            const hasOtherPage = (root: HTMLElement) =>
-              Array.from(root.querySelectorAll<HTMLElement>(".page-shell"))
-                .some((el) => el !== shell && el.offsetParent !== null && !el.contains(shell) && !shell.contains(el));
             const key = keyOf(shell);
             let idx = -1;
             for (let i = stack.length - 1; i >= 0; i--) { if (stack[i].key === key) { idx = i; break; } }
@@ -273,19 +270,10 @@ export function GestureController() {
               // 从主屏进来后还没发生过页内跳转：不管顶栏文字有没有变（加载中→加载完），都还是应用首页
               || (idx < 0 && stack.length <= 1);
             if (isAppRoot) {
-              // 应用首页：返回 = 退出应用，整个应用滑走，底下是主屏（带壁纸）
-              const pane = shell.closest<HTMLElement>(".phone-app-pane");
-              if (generic && pane) pageEl = pane;
-              const nodes = pane ? prevPages.get(pane) : undefined;
-              const win = shell.closest<HTMLElement>(".mini-app-window");
-              if (pane && nodes && nodes.length > 0 && !hasOtherPage(pane)) {
-                pageEl = pane;
-                underNodes = nodes;
-                homeMode = true;
-              } else if (win && !hasOtherPage(win)) {
-                pageEl = win;
-                homeUnder = true;
-              }
+              // 应用首页：上一页是主屏。主屏重新出现时 Float 自己会闪一下，所以这里不提供右滑，
+              // 退出应用只能点左上角的返回键。
+              pageEl = null;
+              backBtn = null;
             } else if (idx > 0 && stack[idx].under) {
               // 二级、三级页面：底下垫进来之前那一页的快照
               pageEl = shell;

@@ -717,10 +717,27 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
         if (!trimmed) return;
         if (!onSendText(trimmed)) return;
         // iOS 中文输入法偶尔会在发送后把最后一段候选词又「补」回输入框，记下刚发的内容用来识别
-        justSentRef.current = { text: trimmed, until: Date.now() + 400 };
+        justSentRef.current = { text: trimmed, until: Date.now() + 1500 };
         setInputText("");
         resetTextareaHeight();
         onClosePanels();
+        // 输入法补字有时不触发任何事件，文字直接出现在框里。发送后盯 1.5 秒：
+        // 框里只要还是刚发出去的那段字（或它的结尾），就连同状态一起清掉。
+        const clearGhost = () => {
+            const ta = textareaRef.current;
+            const sent = justSentRef.current;
+            if (!ta || !sent || Date.now() > sent.until + 200) return;
+            const v = ta.value;
+            if (v && sent.text.endsWith(v.trim()) && v.trim()) {
+                ta.value = "";
+                setInputText("");
+                resetTextareaHeight();
+            }
+        };
+        const ta0 = textareaRef.current;
+        if (ta0 && ta0.value) ta0.value = "";
+        requestAnimationFrame(clearGhost);
+        for (const ms of [60, 200, 500, 1000, 1500]) window.setTimeout(clearGhost, ms);
     };
 
     const panelOpen = showEmojiPanel || showStickerPanel || showPlusMenu;
