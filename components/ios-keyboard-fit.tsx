@@ -20,7 +20,6 @@ const INPUT_SELECTOR = "textarea.chat-input-textarea";
 const NEAR_BOTTOM = 160;
 const ANIM_MS = 250;
 const EASE_CSS = "cubic-bezier(0.215, 0.61, 0.355, 1)";
-const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
 type Parts = { bar: HTMLElement; body: HTMLElement | null };
 
@@ -36,7 +35,6 @@ export function IosKeyboardFit() {
     let applied = 0;
     let offTimer = 0;
     let verifyTimer = 0;
-    let animFrame = 0;
     let animBar: HTMLElement | null = null;
     let animEnd = 0;
     let lastParts: Parts | null = null;
@@ -70,8 +68,10 @@ export function IosKeyboardFit() {
       }
     };
 
+    let animBody: HTMLElement | null = null;
+    let animBodyScroll: number | null = null;
+
     const stopAnim = () => {
-      if (animFrame) { cancelAnimationFrame(animFrame); animFrame = 0; }
       if (animEnd) { window.clearTimeout(animEnd); animEnd = 0; }
       if (animBar) {
         animBar.style.transition = "";
@@ -79,19 +79,37 @@ export function IosKeyboardFit() {
         animBar.style.willChange = "";
         animBar = null;
       }
+      if (animBody) {
+        animBody.style.transition = "";
+        animBody.style.transform = "";
+        animBody.style.willChange = "";
+        animBody.style.top = "";
+        animBody.style.overflowAnchor = "";
+        if (animBodyScroll !== null) animBody.scrollTop = animBodyScroll;
+        animBody = null;
+        animBodyScroll = null;
+      }
     };
 
-    // 消息区滚动补间：只动滚动位置，不触发重新排版
-    const tweenScroll = (body: HTMLElement, from: number, to: number, onDone?: () => void) => {
-      const start = performance.now();
-      const step = (now: number) => {
-        const t = Math.min(1, (now - start) / ANIM_MS);
-        body.scrollTop = from + (to - from) * easeOut(t);
-        if (t < 1) { animFrame = requestAnimationFrame(step); return; }
-        animFrame = 0;
-        onDone?.();
-      };
-      animFrame = requestAnimationFrame(step);
+    /**
+     * 消息区的滑动：不去逐帧改滚动位置（会和浏览器自己的滚动修正打架，变成瞬移），
+     * 而是把消息区整块用 transform 平移。为了平移时顶部不露空，先把它的盒子向上加长 distance，
+     * 滚动位置相应减去 distance——画面完全不变，但上方多出了可以滑进来的内容。
+     *   fromShift → toShift：整块相对最终位置的位移（向下为正）
+     *   restScroll：动画结束、撤掉加长后应有的滚动位置
+     */
+    const slideBody = (body: HTMLElement, distance: number, baseScroll: number, fromShift: number, toShift: number, restScroll: number) => {
+      animBody = body;
+      animBodyScroll = restScroll;
+      body.style.overflowAnchor = "none";
+      body.style.transition = "none";
+      body.style.willChange = "transform";
+      body.style.top = `${-distance}px`;
+      body.scrollTop = baseScroll;
+      body.style.transform = `translate3d(0, ${fromShift}px, 0)`;
+      void body.offsetHeight;
+      body.style.transition = `transform ${ANIM_MS}ms ${EASE_CSS}`;
+      body.style.transform = `translate3d(0, ${toShift}px, 0)`;
     };
 
     /** 抬起：先把最终位置摆好（系统据此判断不用推页面），再从原位置动画过去 */
@@ -104,22 +122,20 @@ export function IosKeyboardFit() {
       const scrollBefore = body ? body.scrollTop : 0;
       setVar(height);
       const lift = barBefore - bar.getBoundingClientRect().bottom;   // 这次读取同时强制完成排版
-      const scrollTarget = body && nearBottom ? body.scrollHeight - body.clientHeight : scrollBefore;
-      if (!animate || lift <= 0) {
-        if (body && nearBottom) body.scrollTop = scrollTarget;
-        return () => {};
-      }
+      const scrollTarget = body && nearBottom ? Math.max(0, body.scrollHeight - body.clientHeight) : scrollBefore;
+      if (body) body.scrollTop = scrollTarget;
+      if (!animate || lift <= 0) return () => {};
       // 返回「开始动画」：调用方要先让输入框聚焦（系统此时读到的是最终位置），再启动动画
       return () => {
         animBar = bar;
         bar.style.transition = "none";
         bar.style.willChange = "transform";
         bar.style.transform = `translate3d(0, ${lift}px, 0)`;
-        if (body) body.scrollTop = scrollBefore;
+        const distance = scrollTarget - scrollBefore;
+        if (body && distance > 0) slideBody(body, distance, scrollBefore, distance, 0, scrollTarget);
         void bar.offsetHeight;
         bar.style.transition = `transform ${ANIM_MS}ms ${EASE_CSS}`;
         bar.style.transform = "translate3d(0, 0, 0)";
-        if (body && nearBottom) tweenScroll(body, scrollBefore, scrollTarget);
         animEnd = window.setTimeout(() => { animEnd = 0; stopAnim(); }, ANIM_MS + 40);
       };
     };
@@ -131,34 +147,31 @@ export function IosKeyboardFit() {
       lastParts = null;
       if (!parts || applied === 0 || !parts.bar.isConnected || parts.bar.offsetParent === null) { setVar(0); return; }
       const { bar, body } = parts;
-      // 先量出「撤掉占位后输入栏会落到哪」
-      const barUp = bar.getBoundingClientRect().bottom;
       const keep = applied;
+      const barUp = bar.getBoundingClientRect().bottom;
+      const scrollNow = body ? body.scrollTop : 0;
+      // 量出「撤掉占位后」输入栏落到哪、消息区最多能滚到哪，再恢复现场
       setVar(0);
       const drop = bar.getBoundingClientRect().bottom - barUp;
-      const scrollNow = body ? body.scrollTop : 0;
-      const maxAfter = body ? body.scrollHeight - body.clientHeight : 0;
+      const maxAfter = body ? Math.max(0, body.scrollHeight - body.clientHeight) : 0;
       setVar(keep);
       if (body) body.scrollTop = scrollNow;
       if (drop <= 0) { setVar(0); return; }
+      const scrollAfter = Math.min(scrollNow, maxAfter);
+      const distance = scrollNow - scrollAfter;
       animBar = bar;
       bar.style.willChange = "transform";
       bar.style.transition = `transform ${ANIM_MS}ms ${EASE_CSS}`;
       bar.style.transform = `translate3d(0, ${drop}px, 0)`;
-      const finish = () => {
-        if (animEnd) { window.clearTimeout(animEnd); animEnd = 0; }
-        if (animBar) {
-          animBar.style.transition = "none";
-          animBar.style.transform = "";
-          animBar.style.willChange = "";
-          animBar = null;
-        }
+      if (body && distance > 0) slideBody(body, distance, scrollAfter, 0, distance, scrollAfter);
+      animEnd = window.setTimeout(() => {
+        animEnd = 0;
+        // 同一帧里：撤占位 + 撤位移，画面不变
+        if (animBar) animBar.style.transition = "none";
+        if (animBody) animBody.style.transition = "none";
         setVar(0);
-        if (body && scrollNow > maxAfter) body.scrollTop = maxAfter;
-        if (animBar === null) bar.style.transition = "";
-      };
-      if (body && scrollNow > maxAfter) tweenScroll(body, scrollNow, maxAfter);
-      animEnd = window.setTimeout(finish, ANIM_MS + 20);
+        stopAnim();
+      }, ANIM_MS + 20);
     };
 
     const reconcile = () => {
@@ -237,7 +250,7 @@ export function IosKeyboardFit() {
         active = false;
         if (verifyTimer) { window.clearTimeout(verifyTimer); verifyTimer = 0; }
         lower();
-      }, 30);
+      }, 0);
     };
 
     const onViewport = () => { if (active) reconcile(); };
