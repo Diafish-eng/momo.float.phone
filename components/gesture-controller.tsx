@@ -269,7 +269,9 @@ export function GestureController() {
             let idx = -1;
             for (let i = stack.length - 1; i >= 0; i--) { if (stack[i].key === key) { idx = i; break; } }
             const isAppRoot = !!shell.closest(".chat-main-content") || idx === 0
-              || (idx < 0 && generic && (btn.getAttribute("aria-label") || "") === "返回桌面");
+              || (idx < 0 && generic && (btn.getAttribute("aria-label") || "") === "返回桌面")
+              // 从主屏进来后还没发生过页内跳转：不管顶栏文字有没有变（加载中→加载完），都还是应用首页
+              || (idx < 0 && stack.length <= 1);
             if (isAppRoot) {
               // 应用首页：返回 = 退出应用，整个应用滑走，底下是主屏（带壁纸）
               const pane = shell.closest<HTMLElement>(".phone-app-pane");
