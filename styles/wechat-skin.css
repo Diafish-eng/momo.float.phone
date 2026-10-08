@@ -548,16 +548,3 @@ html[data-skin-pack] .chat-app .chat-list-wx-title {
 .swipe-back-under > .chat-swipe-back-dim {
   z-index: 9999;
 }
-
-/* ════════════ iOS 键盘适配：聊天输入时页面不动，只把输入栏和消息区抬到键盘上沿 ════════════
-   由 components/ios-keyboard-fit.tsx 在聊天输入框聚焦时挂上 data-ios-kb / --ios-kb（键盘高度）。
-   输入栏底部原本给 Home 指示条留的那段空白，键盘弹起后正好塞到键盘后面，所以要减掉。 */
-html[data-ios-kb] .chat-app .chat-room-wrapper .chat-input-bar {
-  bottom: calc(var(--ios-kb, 0px) - max(0px, env(safe-area-inset-bottom, 0px) - 8px));
-}
-html[data-ios-kb] .chat-app .chat-room-wrapper > .page-body {
-  scroll-padding-bottom: calc(var(--chat-bottom-reserve, 120px) + var(--ios-kb, 0px) + 18px);
-}
-html[data-ios-kb] .chat-app .chat-room-wrapper > .page-body::after {
-  flex-basis: calc(var(--chat-bottom-reserve, 120px) + var(--ios-kb, 0px) - max(0px, env(safe-area-inset-bottom, 0px) - 8px));
-}

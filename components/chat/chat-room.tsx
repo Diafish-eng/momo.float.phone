@@ -22,7 +22,6 @@ import { sendBrowserNotification } from "@/lib/browser-notification";
 import { dispatchChatMessageNotice } from "@/lib/chat-notification-events";
 import { shouldSendChatInputOnEnter } from "@/lib/chat-input-keyboard";
 import { useChatBottomReserve } from "./use-chat-bottom-reserve";
-import { ChatAvatarImg } from "./chat-avatar-img";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
@@ -2052,31 +2051,6 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     }, [captureScrollAnchor, hasMore, messages.length, session.id, stopLoadMoreAnchorTracking]);
     // useLayoutEffect: runs synchronously after DOM mutation, before browser paint
     // Prevents flash of wrong scroll position, works reliably under transform: scale()
-    // 新消息出现时，消息区「滑」到底而不是瞬间跳到底（微信的手感）。
-    // 距离不大才滑；滑的过程中只往下走，别处已经把它放到底了就立刻停，不会和别的滚动逻辑打架。
-    const glideFrameRef = useRef(0);
-    const glideToBottom = useCallback((el: HTMLElement) => {
-        if (glideFrameRef.current) { cancelAnimationFrame(glideFrameRef.current); glideFrameRef.current = 0; }
-        const from = el.scrollTop;
-        const distance = el.scrollHeight - el.clientHeight - from;
-        if (distance <= 2) return;
-        if (distance > 520) { el.scrollTop = el.scrollHeight; return; }
-        const start = performance.now();
-        const duration = 190;
-        const step = (now: number) => {
-            const target = el.scrollHeight - el.clientHeight;
-            const current = el.scrollTop;
-            if (current >= target - 1) { glideFrameRef.current = 0; return; }
-            const t = Math.min(1, (now - start) / duration);
-            const eased = 1 - Math.pow(1 - t, 3);
-            el.scrollTop = Math.max(current, from + (target - from) * eased);
-            if (t >= 1) { el.scrollTop = target; glideFrameRef.current = 0; return; }
-            glideFrameRef.current = requestAnimationFrame(step);
-        };
-        glideFrameRef.current = requestAnimationFrame(step);
-    }, []);
-    useEffect(() => () => { if (glideFrameRef.current) cancelAnimationFrame(glideFrameRef.current); }, []);
-
     const displayMessages = useMemo(() => {
         return [...messages, ...transientMessages]
             .map((msg, index) => ({ msg, index }))
@@ -2149,10 +2123,10 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                 }
             }
         } else if (displayMessages.length > prevMsgCountRef.current && el) {
-            glideToBottom(el);
+            el.scrollTop = el.scrollHeight;
         }
         prevMsgCountRef.current = displayMessages.length;
-    }, [displayMessages, flashMessageHighlight, restoreScrollAnchor, watchLoadMoreAnchorImages, glideToBottom]);
+    }, [displayMessages, flashMessageHighlight, restoreScrollAnchor, watchLoadMoreAnchorImages]);
 
     useLayoutEffect(() => {
         if (!offlineMode) return;
@@ -6279,7 +6253,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                                                         if (targetChar) sendRichMessage("poke", { pokeTarget: targetChar.name });
                                                     }} className="w-[40px] h-[40px] rounded-[20px] bg-[var(--c-input)] overflow-hidden cursor-pointer">
                                                         {senderChar?.avatar ? (
-                                                            <ChatAvatarImg src={senderChar.avatar} className="w-full h-full object-cover" />
+                                                            <img src={senderChar.avatar} decoding="sync" className="w-full h-full object-cover" alt="" />
                                                         ) : (
                                                             <ChatFallbackAvatar />
                                                         )}
@@ -6376,7 +6350,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                                         {msg.role === "user" && !isEmptyBubble && (
                                             <div className="chat-msg-avatar w-[40px] h-[40px] rounded-[20px] bg-[var(--c-page-body-bg)] shrink-0 flex items-center justify-center overflow-hidden">
                                                 {effectiveUserAvatar ? (
-                                                    <ChatAvatarImg src={effectiveUserAvatar} alt="Me" className="w-full h-full object-cover rounded-[20px]" />
+                                                    <img src={effectiveUserAvatar} alt="Me" decoding="sync" className="w-full h-full object-cover rounded-[20px]" />
                                                 ) : (
                                                     <User size={20} color="var(--c-text)" />
                                                 )}
@@ -6462,7 +6436,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                                         <div key={`stream-${part.characterId}-${i}-${j}`} className="chat-msg-wrapper" data-role="assistant">
                                             <div className="chat-msg-avatar flex flex-col items-center gap-1 shrink-0">
                                                 <div className="w-[40px] h-[40px] rounded-[20px] bg-[var(--c-input)] overflow-hidden">
-                                                    {senderChar?.avatar ? <ChatAvatarImg src={senderChar.avatar} className="w-full h-full object-cover" /> : <ChatFallbackAvatar />}
+                                                    {senderChar?.avatar ? <img src={senderChar.avatar} decoding="sync" className="w-full h-full object-cover" alt="" /> : <ChatFallbackAvatar />}
                                                 </div>
                                             </div>
                                             <div className="chat-msg-content-wrap flex flex-col min-w-0 max-w-[70%]">

@@ -176,8 +176,6 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
     const [themeDark, setThemeDark] = useState(false);
     const [skinWechat, setSkinWechat] = useState(false);
     const [packYield, setPackYield] = useState(false);
-    const [kbFollow, setKbFollow] = useState(false);
-    const [kbDiag, setKbDiag] = useState(false);
     const [quoteUseRemark, setQuoteUseRemark] = useState(true);
     const [userStats, setUserStats] = useState({ chats: 0, moments: 0, visitors: 1234 });
     const [walletSummary, setWalletSummary] = useState(() => {
@@ -194,8 +192,6 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
             setSkinWechat(localStorage.getItem("float-wx-toolbar") === "on");
             setQuoteUseRemark(getQuoteNameMode() === "remark");
             setPackYield(isSkinPackYieldEnabled());
-            setKbFollow(localStorage.getItem("float-ios-kb") === "on");
-            setKbDiag(localStorage.getItem("float-kb-diag") === "1");
             const m = localStorage.getItem("float-theme-mode");
             if (m === "dark") setThemeDark(true);
             else if (m === "light") setThemeDark(false);
@@ -573,24 +569,6 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
                                 <span className="ts-11 text-[var(--c-text)] opacity-70">关=始终微信外观；开=贴了别人的美化 CSS 时微信外观自动让位，回到 Float 原生布局</span>
                             </div>
                             <Toggle checked={packYield} onChange={(enabled) => { setPackYield(enabled); setSkinPackYieldEnabled(enabled); }} />
-                        </div>
-
-                        <div className="flex items-center gap-3 py-3 w-full border-b border-[color-mix(in_srgb,var(--c-card-border)_20%,transparent)]">
-                            <MessageSquare size={18} className="text-[var(--c-icon)] opacity-70" strokeWidth={1.25}/>
-                            <div className="flex flex-col flex-1 text-left gap-0.5">
-                                <span className="ts-14 font-semibold text-[var(--c-text-title)]">键盘跟随（实验）</span>
-                                <span className="ts-11 text-[var(--c-text)] opacity-70">聊天时键盘弹起顶栏不动、输入栏跟着键盘走。真机上还没调准，默认关闭；改完需重新打开应用生效</span>
-                            </div>
-                            <Toggle checked={kbFollow} onChange={(enabled) => { setKbFollow(enabled); try { if (enabled) localStorage.setItem("float-ios-kb", "on"); else localStorage.removeItem("float-ios-kb"); } catch { /* ignore */ } }} />
-                        </div>
-
-                        <div className="flex items-center gap-3 py-3 w-full border-b border-[color-mix(in_srgb,var(--c-card-border)_20%,transparent)]">
-                            <MessageSquare size={18} className="text-[var(--c-icon)] opacity-70" strokeWidth={1.25}/>
-                            <div className="flex flex-col flex-1 text-left gap-0.5">
-                                <span className="ts-14 font-semibold text-[var(--c-text-title)]">键盘诊断</span>
-                                <span className="ts-11 text-[var(--c-text)] opacity-70">打开后左上角显示一小块数字，用来截图排查键盘问题；改完需重新打开应用生效，查完关掉</span>
-                            </div>
-                            <Toggle checked={kbDiag} onChange={(enabled) => { setKbDiag(enabled); try { if (enabled) localStorage.setItem("float-kb-diag", "1"); else localStorage.removeItem("float-kb-diag"); } catch { /* ignore */ } }} />
                         </div>
 
                         <div className="flex items-center gap-3 py-3 w-full border-b border-[color-mix(in_srgb,var(--c-card-border)_20%,transparent)]">
