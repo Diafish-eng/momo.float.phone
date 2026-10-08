@@ -443,3 +443,28 @@ html[data-theme="dark"] .chat-app .profile-balance-card .bg-white\/70 {
   border-color: rgba(255, 255, 255, 0.16) !important;
   color: #8FB8FF !important;
 }
+
+/* ════════════ 引用回复：照微信——气泡里只有正文，引用是气泡正下方的灰色小框 ════════════ */
+.chat-app { --wx-quote: rgba(0, 0, 0, 0.06); }
+html[data-theme="dark"] .chat-app { --wx-quote: #2A2A2A; }
+
+html .chat-app .chat-quote-preview {
+  position: absolute !important;
+  top: calc(100% + 6px);
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 4px !important;
+  padding: 6px 10px !important;
+  background: var(--wx-quote) !important;
+  color: var(--wx-sub) !important;
+  font-size: calc(13px * var(--app-text-scale, 1)) !important;
+  line-height: 1.4;
+  width: max-content;
+  max-width: min(260px, 68vw);
+}
+html .chat-app .chat-bubble-role-user .chat-quote-preview { right: 0; }
+html .chat-app .chat-bubble-role-assistant .chat-quote-preview { left: 0; }
+/* 给引用小框让出位置，免得压到下一条消息 */
+html .chat-app :is(.chat-bubble-role-user, .chat-bubble-role-assistant):has(.chat-quote-preview) {
+  margin-bottom: 40px !important;
+}
