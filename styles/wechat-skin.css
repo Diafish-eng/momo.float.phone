@@ -66,19 +66,19 @@ html[data-theme="dark"] .chat-app {
 }
 
 /* ════════════ 顶栏：实色、细分割线、标题居中加粗 ════════════ */
-html .chat-app .page-shell:not(.moments-feed-page) > .page-header {
+html .chat-app .page-shell:not(.moments-feed-page):not(.user-profile-page-root) > .page-header {
   background: var(--wx-nav) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border-bottom: 0.5px solid var(--wx-line) !important;
   box-shadow: none !important;
 }
-html .chat-app .page-shell:not(.moments-feed-page) > .page-header .page-title {
+html .chat-app .page-shell:not(.moments-feed-page):not(.user-profile-page-root) > .page-header .page-title {
   color: var(--wx-text) !important;
   font-weight: 600 !important;
   font-size: calc(17px * var(--app-text-scale, 1)) !important;
 }
-html .chat-app .page-shell:not(.moments-feed-page) > .page-header .page-back-btn {
+html .chat-app .page-shell:not(.moments-feed-page):not(.user-profile-page-root) > .page-header .page-back-btn {
   color: var(--wx-text) !important;
 }
 
@@ -427,4 +427,19 @@ html .chat-app .contact-letter-header {
   padding: 6px 16px !important;
   color: var(--wx-sub) !important;
   font-weight: 400 !important;
+}
+
+/* ════════════ 「我」页：保持 Float 原布局，只适配深色 ════════════ */
+html[data-theme="dark"] .chat-app .profile-balance-card {
+  background: #1E2A3A !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #E6EDF7 !important;
+}
+html[data-theme="dark"] .chat-app .profile-balance-card span[style] {
+  color: inherit !important;
+}
+html[data-theme="dark"] .chat-app .profile-balance-card .bg-white\/70 {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #8FB8FF !important;
 }
