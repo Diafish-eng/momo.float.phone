@@ -470,7 +470,7 @@ html:not([data-skin-pack]) .chat-app :is(.chat-bubble-role-user, .chat-bubble-ro
 }
 
 /* ════════════ 时间小条：照微信的圆角小框，点一下切换完整日期 ════════════ */
-.chat-app { --wx-time-bg: #F7F7F7; --wx-time-text: rgba(0, 0, 0, 0.55); --wx-time-line: rgba(0, 0, 0, 0.1); }
+.chat-app { --wx-time-bg: rgba(0, 0, 0, 0.045); --wx-time-text: rgba(0, 0, 0, 0.55); --wx-time-line: rgba(0, 0, 0, 0.09); }
 html[data-theme="dark"] .chat-app { --wx-time-bg: rgba(44, 44, 44, 0.9); --wx-time-text: rgba(255, 255, 255, 0.5); --wx-time-line: transparent; }
 html:not([data-skin-pack]) .chat-app .chat-time-chip {
   background: var(--wx-time-bg) !important;
