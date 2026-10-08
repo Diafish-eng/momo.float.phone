@@ -2052,6 +2052,31 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     }, [captureScrollAnchor, hasMore, messages.length, session.id, stopLoadMoreAnchorTracking]);
     // useLayoutEffect: runs synchronously after DOM mutation, before browser paint
     // Prevents flash of wrong scroll position, works reliably under transform: scale()
+    // 新消息出现时，消息区「滑」到底而不是瞬间跳到底（微信的手感）。
+    // 距离不大才滑；滑的过程中只往下走，别处已经把它放到底了就立刻停，不会和别的滚动逻辑打架。
+    const glideFrameRef = useRef(0);
+    const glideToBottom = useCallback((el: HTMLElement) => {
+        if (glideFrameRef.current) { cancelAnimationFrame(glideFrameRef.current); glideFrameRef.current = 0; }
+        const from = el.scrollTop;
+        const distance = el.scrollHeight - el.clientHeight - from;
+        if (distance <= 2) return;
+        if (distance > 520) { el.scrollTop = el.scrollHeight; return; }
+        const start = performance.now();
+        const duration = 190;
+        const step = (now: number) => {
+            const target = el.scrollHeight - el.clientHeight;
+            const current = el.scrollTop;
+            if (current >= target - 1) { glideFrameRef.current = 0; return; }
+            const t = Math.min(1, (now - start) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            el.scrollTop = Math.max(current, from + (target - from) * eased);
+            if (t >= 1) { el.scrollTop = target; glideFrameRef.current = 0; return; }
+            glideFrameRef.current = requestAnimationFrame(step);
+        };
+        glideFrameRef.current = requestAnimationFrame(step);
+    }, []);
+    useEffect(() => () => { if (glideFrameRef.current) cancelAnimationFrame(glideFrameRef.current); }, []);
+
     const displayMessages = useMemo(() => {
         return [...messages, ...transientMessages]
             .map((msg, index) => ({ msg, index }))
@@ -2124,10 +2149,10 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                 }
             }
         } else if (displayMessages.length > prevMsgCountRef.current && el) {
-            el.scrollTop = el.scrollHeight;
+            glideToBottom(el);
         }
         prevMsgCountRef.current = displayMessages.length;
-    }, [displayMessages, flashMessageHighlight, restoreScrollAnchor, watchLoadMoreAnchorImages]);
+    }, [displayMessages, flashMessageHighlight, restoreScrollAnchor, watchLoadMoreAnchorImages, glideToBottom]);
 
     useLayoutEffect(() => {
         if (!offlineMode) return;
