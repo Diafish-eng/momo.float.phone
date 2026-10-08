@@ -24,7 +24,7 @@ import {
   createOrGetSession,
   hydrateChatStorage,
   loadChatContacts,
-  loadChatSessions,
+  loadChatSessions, peekChatSessions,
   type ChatMessage,
 } from "@/lib/chat-storage";
 import { deleteMediaRef, isMediaStoreRef, loadMediaBlob, storeMediaBase64 } from "@/lib/media-cache-storage";
@@ -1858,7 +1858,7 @@ export function CustomAppRunner({
       if (!subscribedEventsRef.current.has("chat.message.created") && !subscribedEventsRef.current.has("*")) return;
       const message = (event as CustomEvent<{ message?: ChatMessage }>).detail?.message;
       if (!message) return;
-      const session = loadChatSessions().find(item => item.id === message.sessionId);
+      const session = peekChatSessions().find(item => item.id === message.sessionId);
       postHostEvent("chat.message.created", {
         sessionId: message.sessionId,
         characterId: session?.contactId ?? "",

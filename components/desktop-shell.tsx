@@ -126,7 +126,7 @@ import { WidgetRenderer } from "@/components/widgets/widget-renderer";
 import type { DIYWidgetTemplate } from "@/lib/widget-types";
 import { DebugPromptPanel } from "@/components/debug-prompt-panel";
 import { QuickActionFloat } from "@/components/quick-action-float";
-import { CHAT_MESSAGE_PUSHED_EVENT, CHAT_REQUEST_REPLY_EVENT, findChatSessionById, hydrateChatStorage, loadChatSessions, loadChatMessages, pushChatMessage, type ChatMessage, type ChatSession } from "@/lib/chat-storage";
+import { CHAT_MESSAGE_PUSHED_EVENT, CHAT_REQUEST_REPLY_EVENT, findChatSessionById, hydrateChatStorage, loadChatSessions, peekChatSessions, loadChatMessages, pushChatMessage, type ChatMessage, type ChatSession } from "@/lib/chat-storage";
 import { ensureGlobalBindingDefaults, resolveUserIdentity } from "@/lib/settings-storage";
 import { loadCharacters } from "@/lib/character-storage";
 import { generateChatCompletion, flattenCompletionResult } from "@/lib/chat-engine";
@@ -1640,7 +1640,7 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
       try {
         const message = (event as CustomEvent<{ message?: ChatMessage }>).detail?.message;
         if (!message || message.origin === "custom_app_background" || !message.sessionId) return;
-        const session = loadChatSessions().find(item => item.id === message.sessionId);
+        const session = peekChatSessions().find(item => item.id === message.sessionId);
         const payload = {
           sessionId: message.sessionId,
           characterId: session?.contactId ?? "",

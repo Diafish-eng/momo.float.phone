@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { ChevronLeft } from "lucide-react";
-import { CHAT_MESSAGE_PUSHED_EVENT, loadChatSessions, loadChatContacts, ChatSession, createOrGetSession, createGroupSession, pushChatMessage, addChatContact, loadChatMessages, getLastVisibleSessionMessage, getChatMessagePreview } from "@/lib/chat-storage";
+import { CHAT_MESSAGE_PUSHED_EVENT, loadChatSessions, peekChatSessions, loadChatContacts, ChatSession, createOrGetSession, createGroupSession, pushChatMessage, addChatContact, loadChatMessages, getLastVisibleSessionMessage, getChatMessagePreview } from "@/lib/chat-storage";
 import { loadCharacters } from "@/lib/character-storage";
 import { Character } from "@/lib/character-types";
 import { resolveUserIdentity, USER_IDENTITIES_UPDATED_EVENT } from "@/lib/settings-storage";
@@ -148,14 +148,27 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
 
     useEffect(() => {
         const refreshSessions = () => setSessions([...loadChatSessions()]);
+        // 每发/收一条消息都会触发这个事件，而且是在「消息落库」的同一瞬间同步触发。
+        // 原来这里直接 loadChatSessions()：它会把所有会话的预览全量重算一遍，聊天数据一多就要卡
+        // 上几百毫秒到一秒多，表现就是「按了发送，字还停在输入框里，过一会儿气泡才出来」。
+        // 改成：等这一帧画完再更新，并且只读内存里已经增量更新好的那份，不重算。
+        let pushedTimer = 0;
+        const onMessagePushed = () => {
+            if (pushedTimer) return;
+            pushedTimer = window.setTimeout(() => {
+                pushedTimer = 0;
+                setSessions([...peekChatSessions()]);
+            }, 250);
+        };
         window.addEventListener("weixin-messages-updated", refreshSessions);
         window.addEventListener("chat-messages-updated", refreshSessions);
-        window.addEventListener(CHAT_MESSAGE_PUSHED_EVENT, refreshSessions);
+        window.addEventListener(CHAT_MESSAGE_PUSHED_EVENT, onMessagePushed);
         window.addEventListener("characters-updated", refreshSessions);
         return () => {
+            if (pushedTimer) window.clearTimeout(pushedTimer);
             window.removeEventListener("weixin-messages-updated", refreshSessions);
             window.removeEventListener("chat-messages-updated", refreshSessions);
-            window.removeEventListener(CHAT_MESSAGE_PUSHED_EVENT, refreshSessions);
+            window.removeEventListener(CHAT_MESSAGE_PUSHED_EVENT, onMessagePushed);
             window.removeEventListener("characters-updated", refreshSessions);
         };
     }, []);

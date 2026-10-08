@@ -412,7 +412,9 @@ export function resolveChatSoundConfig(
 
 /** 按 id 从会话缓存取会话（提示音等同步读取路径用；找不到时返回 null）。 */
 export function findChatSessionById(sessionId: string): ChatSession | null {
-    return loadChatSessions().find(s => s.id === sessionId) ?? null;
+    // 按 id 查一条：直接查内存缓存。原来走 loadChatSessions() 会顺带把所有会话预览全量重算，
+    // 而这个函数在每次发消息（播放发送音效）时都会被调用。
+    return _sessionsCache.find(s => s.id === sessionId) ?? null;
 }
 
 /** 单条消息工具循环轮数上限（默认 5，夹在 1–20 之间） */
@@ -1296,6 +1298,15 @@ export function removeChatContact(characterId: string) {
 }
 
 // ── CRUD for Sessions ─────────────────────────
+/**
+ * 只读取当前内存里的会话列表，不做任何重算。
+ * pushChatMessage 已经把「最后一条消息 / 预览 / 时间」增量写进这份缓存了，
+ * 所以只是想让列表显示最新预览时用这个就够，不必走 loadChatSessions 的全量重算。
+ */
+export function peekChatSessions(): ChatSession[] {
+    return _sessionsCache;
+}
+
 export function loadChatSessions(): ChatSession[] {
     const normalized = normalizeChatSessions(_sessionsCache);
     const redirectedMessages = redirectMessagesToPreferredSessions(normalized.redirects);
