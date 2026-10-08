@@ -173,6 +173,9 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
     const [callVibrationEnabled, setCallVibrationEnabled] = useState(true);
     const [themeDark, setThemeDark] = useState(false);
     const [skinWechat, setSkinWechat] = useState(false);
+    // 微信「我」页：默认只显示头像+列表；「设置」里才是原来的全部设置项；「服务」里是钱包
+    const [showWxSettings, setShowWxSettings] = useState(false);
+    const [showWxService, setShowWxService] = useState(false);
     const [userStats, setUserStats] = useState({ chats: 0, moments: 0, visitors: 1234 });
     const [walletSummary, setWalletSummary] = useState(() => {
         const wallet = loadWalletState();
@@ -349,7 +352,24 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
         return <InlineMomentsSettings onBack={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: false })); setShowMomentsSettings(false); }} />;
     }
     if (showWalletPanel) {
-        return <WalletPanel onBack={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: false })); setShowWalletPanel(false); }} />;
+        return <WalletPanel onBack={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: !!showWxService })); setShowWalletPanel(false); }} />;
+    }
+    if (showWxService) {
+        return (
+            <PageShell title="服务" onBack={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: false })); setShowWxService(false); }} className="wx-service-page">
+                <div className="wx-service-card">
+                    <button type="button" className="wx-service-item" onClick={() => setShowWalletPanel(true)}>
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8" /><path d="M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8" /><path d="M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16" /><path d="M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16" /><path d="M8.5 12.2l2.3 2.3 4.7-4.8" /></svg>
+                        <span className="wx-service-label">收付款</span>
+                    </button>
+                    <button type="button" className="wx-service-item" onClick={() => setShowWalletPanel(true)}>
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="1.5" /><path d="M20.5 10h-5a2 2 0 0 0 0 4h5" /></svg>
+                        <span className="wx-service-label">钱包</span>
+                        <span className="wx-service-sub">{walletSummary.totalLabel}</span>
+                    </button>
+                </div>
+            </PageShell>
+        );
     }
 
     return (
@@ -391,11 +411,55 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
                     display: none;
                 }
             `}</style>
-            <PageShell title="" onBack={onClose} className={`user-profile-page-root ${className || ""}`}>
-                <div className="relative z-[1] w-full max-w-2xl mx-auto flex flex-col pb-8">
+            <PageShell title={showWxSettings ? "设置" : ""} onBack={showWxSettings ? () => setShowWxSettings(false) : onClose} className={`user-profile-page-root ${showWxSettings ? "wx-me-settings" : "wx-me-main"} ${className || ""}`}>
+                <div className="wx-me-root relative z-[1] w-full max-w-2xl mx-auto flex flex-col pb-8">
                     
+                    {/* 微信「我」页主视图 */}
+                    <div className="wx-me">
+                        <div className="wx-me-head">
+                            <button type="button" className="wx-me-avatar" onClick={() => profileAvatarInputRef.current?.click()} aria-label="更换头像">
+                                {identity?.avatarUrl ? <img src={identity.avatarUrl} alt="" /> : <User size={32} color="var(--c-icon)" />}
+                            </button>
+                            <div className="wx-me-info">
+                                <div className="wx-me-name">{identity?.name || "未设置身份"}</div>
+                                <div className="wx-me-id">微信号：{identity?.id || "-"}</div>
+                            </div>
+                        </div>
+                        <div className="wx-cell-group">
+                            <button type="button" className="wx-cell" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowWxService(true); }}>
+                                <svg className="wx-cell-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#07C160" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4c-4.7 0-8.5 3-8.5 6.8 0 2.1 1.2 4 3.1 5.2L6 19.5l3.4-1.7c.8.2 1.7.3 2.6.3 4.7 0 8.5-3 8.5-6.8S16.7 4 12 4Z" /><path d="M8.3 10.8l2.5 2.4 5-4.4" /></svg>
+                                <span className="wx-cell-label">服务</span>
+                                <ChevronRight className="wx-cell-arrow" size={18} />
+                            </button>
+                        </div>
+                        <div className="wx-cell-group">
+                            <button type="button" className="wx-cell" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowMomentsSettings(true); }}>
+                                <svg className="wx-cell-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="1.5" /><path d="M3.5 16l4.5-4.5 3.5 3.5 3-3 6 5" /><circle cx="15.5" cy="9.5" r="1.2" /></svg>
+                                <span className="wx-cell-label">朋友圈</span>
+                                <ChevronRight className="wx-cell-arrow" size={18} />
+                            </button>
+                            <button type="button" className="wx-cell" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowStickerManager(true); }}>
+                                <svg className="wx-cell-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F5B700" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5" /><path d="M7.7 13.5a4.4 4.4 0 0 0 8.6 0Z" /><line x1="9" y1="9.2" x2="9.01" y2="9.2" /><line x1="15" y1="9.2" x2="15.01" y2="9.2" /></svg>
+                                <span className="wx-cell-label">表情</span>
+                                <ChevronRight className="wx-cell-arrow" size={18} />
+                            </button>
+                            <button type="button" className="wx-cell" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowCSSEditor(true); }}>
+                                <svg className="wx-cell-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F0624D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.2 0 1.8-.9 1.8-1.8 0-1.7 1-2.2 2.2-2.2h1.5a3 3 0 0 0 3-3c0-5.5-3.8-10-8.5-10Z" /><circle cx="7.8" cy="11" r="1" /><circle cx="10.5" cy="7.5" r="1" /><circle cx="15" cy="8" r="1" /></svg>
+                                <span className="wx-cell-label">外观</span>
+                                <ChevronRight className="wx-cell-arrow" size={18} />
+                            </button>
+                        </div>
+                        <div className="wx-cell-group">
+                            <button type="button" className="wx-cell" onClick={() => setShowWxSettings(true)}>
+                                <svg className="wx-cell-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 3.2l1.3 2.3 2.6-.3.9 2.4 2.4 1-.4 2.6 1.9 1.8-1.9 1.8.4 2.6-2.4 1-.9 2.4-2.6-.3L12 22.8l-1.3-2.3-2.6.3-.9-2.4-2.4-1 .4-2.6L3.3 13l1.9-1.8-.4-2.6 2.4-1 .9-2.4 2.6.3Z" transform="translate(0 -1)" /></svg>
+                                <span className="wx-cell-label">设置</span>
+                                <ChevronRight className="wx-cell-arrow" size={18} />
+                            </button>
+                        </div>
+                    </div>
+
                     {/* User Info & Stats Block */}
-                    <div className="flex items-center gap-5 px-6 pt-2 pb-4">
+                    <div className="wx-legacy-top flex items-center gap-5 px-6 pt-2 pb-4">
                         {/* Avatar */}
                         <div className="relative shrink-0">
                             <button
@@ -454,7 +518,7 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
 
                     <button
                         type="button"
-                        className="mx-4 mb-4 rounded-2xl overflow-hidden text-left relative min-h-[132px] p-5 flex flex-col justify-between"
+                        className="wx-legacy-top mx-4 mb-4 rounded-2xl overflow-hidden text-left relative min-h-[132px] p-5 flex flex-col justify-between"
                         onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowWalletPanel(true); }}
                         style={{ background: "#eaf5ff", boxShadow: "0 8px 24px rgba(0,0,0,0.025)", border: "1px solid rgba(255,255,255,0.72)", color: "#172033" }}
                     >
@@ -475,7 +539,7 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
                     </button>
 
                     {/* Quick Features Row */}
-                    <div className="mx-4 mb-4 bg-[var(--c-card)] rounded-2xl flex items-center justify-between p-4 px-6"
+                    <div className="wx-legacy-top mx-4 mb-4 bg-[var(--c-card)] rounded-2xl flex items-center justify-between p-4 px-6"
                          style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.025)" }}>
                         <button className="flex flex-col items-center gap-2 flex-1" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowMomentsSettings(true); }}>
                             <div className="w-[42px] h-[42px] rounded-[14px] bg-[color-mix(in_srgb,var(--c-warning)_15%,transparent)] text-[var(--c-warning)] flex items-center justify-center">
