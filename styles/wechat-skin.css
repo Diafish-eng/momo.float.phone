@@ -477,12 +477,12 @@ html:not([data-skin-pack]) .chat-app .chat-time-chip {
   background: var(--wx-time-bg) !important;
   color: var(--wx-time-text) !important;
   border: 0.5px solid var(--wx-time-line) !important;
-  border-radius: 5px !important;
+  border-radius: 4px !important;
   /* 尺寸照用户给的微信截图量出来的：字高≈框高的一半，半粗，系统数字字体 */
-  padding: 3.5px 6.5px !important;
+  padding: 3.5px 5.5px !important;
   font-family: -apple-system, "SF Pro Text", "Helvetica Neue", "PingFang SC", sans-serif !important;
-  font-size: calc(15px * var(--app-text-scale, 1)) !important;
-  font-weight: 500 !important;
+  font-size: calc(14px * var(--app-text-scale, 1)) !important;
+  font-weight: 400 !important;
   line-height: 1 !important;
   letter-spacing: 0 !important;
   cursor: pointer;
