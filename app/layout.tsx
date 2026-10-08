@@ -36,7 +36,7 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){try{var d=document.documentElement,q=window.matchMedia('(prefers-color-scheme: dark)');function a(){var m=localStorage.getItem('float-theme-mode');d.setAttribute('data-theme',(m==='dark'||m==='light')?m:(q.matches?'dark':'light'));}a();if(q.addEventListener){q.addEventListener('change',a);}if(localStorage.getItem('float-wx-toolbar')==='on'){d.setAttribute('data-wx-toolbar','on');}if(localStorage.getItem('float-skin-pack-mode')==='auto'&&localStorage.getItem('float-skin-pack')){d.setAttribute('data-skin-pack','on');}}catch(e){}})();",
+              "(function(){try{var d=document.documentElement,q=window.matchMedia('(prefers-color-scheme: dark)'),L=localStorage;function s(){return q.matches?'dark':'light';}function a(){var m=L.getItem('float-theme-mode');if((m==='dark'||m==='light')&&L.getItem('float-theme-sys')!==s()){L.removeItem('float-theme-mode');L.removeItem('float-theme-sys');m=null;}d.setAttribute('data-theme',(m==='dark'||m==='light')?m:s());try{window.dispatchEvent(new Event('float-theme-changed'));}catch(e){}}a();if(q.addEventListener){q.addEventListener('change',a);}else if(q.addListener){q.addListener(a);}document.addEventListener('visibilitychange',function(){if(!document.hidden)a();});window.addEventListener('pageshow',a);if(localStorage.getItem('float-wx-toolbar')==='on'){d.setAttribute('data-wx-toolbar','on');}if(localStorage.getItem('float-skin-pack-mode')==='auto'&&localStorage.getItem('float-skin-pack')){d.setAttribute('data-skin-pack','on');}}catch(e){}})();",
           }}
         />
         <link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials" />

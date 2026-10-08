@@ -199,6 +199,13 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
         } catch { /* ignore */ }
     }, []);
 
+    // 系统深浅切换（或回到前台时发现系统变了）后，开关跟着显示当前实际状态
+    useEffect(() => {
+        const sync = () => setThemeDark(document.documentElement.getAttribute("data-theme") === "dark");
+        window.addEventListener("float-theme-changed", sync);
+        return () => window.removeEventListener("float-theme-changed", sync);
+    }, []);
+
     // 「微信工具栏」开关：只管聊天输入框那排工具栏的布局。
     // 开 = 仿微信一行式；关 = Float 原生工具栏（第三方美化包按这个写）
     const handleSkinWechatToggle = (enabled: boolean) => {
@@ -218,6 +225,8 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
         setThemeDark(enabled);
         try {
             localStorage.setItem("float-theme-mode", enabled ? "dark" : "light");
+            // 记下此刻系统是深是浅：之后系统一切换，手动选择就作废，重新跟随系统
+            localStorage.setItem("float-theme-sys", window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
             document.documentElement.setAttribute("data-theme", enabled ? "dark" : "light");
         } catch { /* ignore */ }
     };
@@ -566,7 +575,7 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
                             <Moon size={18} className="text-[var(--c-icon)] opacity-70" strokeWidth={1.25}/>
                             <div className="flex flex-col flex-1 text-left gap-0.5">
                                 <span className="ts-14 font-semibold text-[var(--c-text-title)]">深色模式</span>
-                                <span className="ts-11 text-[var(--c-text)] opacity-70">开=深色、关=浅色；没手动选过时跟随系统</span>
+                                <span className="ts-11 text-[var(--c-text)] opacity-70">默认跟随系统；手动切换后保持到系统下一次切换深浅为止</span>
                             </div>
                             <Toggle checked={themeDark} onChange={handleThemeDarkToggle} />
                         </div>

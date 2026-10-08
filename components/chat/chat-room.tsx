@@ -2134,6 +2134,28 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         if (el) el.scrollTop = el.scrollHeight;
     }, [offlineMode, offlineTurns.length, isOfflineGenerating, pendingOfflineUserText]);
 
+    // 从线下模式切回线上：聊天记录是重新画出来的，滚动位置会停在倒数几条上。
+    // 切回来时贴到最底（等排版和底部输入栏高度稳定后再补两次），和点「线下」之前一样。
+    const wasOfflineRef = useRef(false);
+    useLayoutEffect(() => {
+        const wasOffline = wasOfflineRef.current;
+        wasOfflineRef.current = offlineMode;
+        if (offlineMode || !wasOffline) return;
+        const snap = () => {
+            const el = scrollRef.current;
+            if (el) el.scrollTop = el.scrollHeight;
+        };
+        snap();
+        let raf2 = 0;
+        const raf1 = requestAnimationFrame(() => { snap(); raf2 = requestAnimationFrame(snap); });
+        const timer = window.setTimeout(snap, 260);
+        return () => {
+            cancelAnimationFrame(raf1);
+            if (raf2) cancelAnimationFrame(raf2);
+            window.clearTimeout(timer);
+        };
+    }, [offlineMode]);
+
     // 流式预览增量更新时跟随滚动到底：仅在用户本来就停在底部附近时跟随，
     // 用户上翻历史/查看旧消息时绝不拽回底部（否则长回复生成中根本无法阅读）。
     const isNearBottomRef = useRef(true);
