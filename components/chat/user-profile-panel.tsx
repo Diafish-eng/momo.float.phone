@@ -563,7 +563,7 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
                             <MessageSquareDashed size={18} className="text-[var(--c-icon)] opacity-70" strokeWidth={1.25}/>
                             <div className="flex flex-col flex-1 text-left gap-0.5">
                                 <span className="ts-14 font-semibold text-[var(--c-text-title)]">引用显示备注名</span>
-                                <span className="ts-11 text-[var(--c-text)] opacity-70">开=引用里对方显示你给 TA 的备注；关=显示对方本名</span>
+                                <span className="ts-11 text-[var(--c-text)] opacity-70">开=引用里显示备注（你给 TA 的 / TA 给你的）；关=双方都显示本名</span>
                             </div>
                             <Toggle checked={quoteUseRemark} onChange={(enabled) => { setQuoteUseRemark(enabled); setQuoteNameMode(enabled ? "remark" : "real"); }} />
                         </div>

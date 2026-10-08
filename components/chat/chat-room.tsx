@@ -5587,6 +5587,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         userName: userIdentity?.name || "我",
         charName: character?.name || "",
         charRemark: session.alias || "",
+        userRemark: session.characterRemarkForUser || "",
         isGroup: !!session.isGroup,
     });
 
