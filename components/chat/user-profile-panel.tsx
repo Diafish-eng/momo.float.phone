@@ -17,6 +17,7 @@ import type { UserIdentity } from "@/components/settings/user-identity";
 import { getApiLogs, clearApiLogs, type DebugInfo } from "@/lib/chat-engine";
 import type { FollowUpConfig } from "@/lib/settings-storage";
 import { getQuoteNameMode, setQuoteNameMode } from "@/lib/quote-name";
+import { isSkinPackYieldEnabled, setSkinPackYieldEnabled } from "@/lib/skin-pack";
 import { PageShell } from "@/components/ui/page-shell";
 import { CHAT_APP_CSS_EXAMPLE } from "@/lib/css-examples";
 import { Toggle } from "@/components/ui/form";
@@ -174,6 +175,7 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
     const [callVibrationEnabled, setCallVibrationEnabled] = useState(true);
     const [themeDark, setThemeDark] = useState(false);
     const [skinWechat, setSkinWechat] = useState(false);
+    const [packYield, setPackYield] = useState(false);
     const [quoteUseRemark, setQuoteUseRemark] = useState(true);
     const [userStats, setUserStats] = useState({ chats: 0, moments: 0, visitors: 1234 });
     const [walletSummary, setWalletSummary] = useState(() => {
@@ -189,6 +191,7 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
         try {
             setSkinWechat(localStorage.getItem("float-wx-toolbar") === "on");
             setQuoteUseRemark(getQuoteNameMode() === "remark");
+            setPackYield(isSkinPackYieldEnabled());
             const m = localStorage.getItem("float-theme-mode");
             if (m === "dark") setThemeDark(true);
             else if (m === "light") setThemeDark(false);
@@ -548,6 +551,15 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
                                 <span className="ts-11 text-[var(--c-text)] opacity-70">只改聊天输入框那排工具栏：开=仿微信一行式，关=Float 原生（用别的美化包时关掉）</span>
                             </div>
                             <Toggle checked={skinWechat} onChange={handleSkinWechatToggle} />
+                        </div>
+
+                        <div className="flex items-center gap-3 py-3 w-full border-b border-[color-mix(in_srgb,var(--c-card-border)_20%,transparent)]">
+                            <MessageSquare size={18} className="text-[var(--c-icon)] opacity-70" strokeWidth={1.25}/>
+                            <div className="flex flex-col flex-1 text-left gap-0.5">
+                                <span className="ts-14 font-semibold text-[var(--c-text-title)]">美化包优先</span>
+                                <span className="ts-11 text-[var(--c-text)] opacity-70">关=始终微信外观；开=贴了别人的美化 CSS 时微信外观自动让位，回到 Float 原生布局</span>
+                            </div>
+                            <Toggle checked={packYield} onChange={(enabled) => { setPackYield(enabled); setSkinPackYieldEnabled(enabled); }} />
                         </div>
 
                         <div className="flex items-center gap-3 py-3 w-full border-b border-[color-mix(in_srgb,var(--c-card-border)_20%,transparent)]">

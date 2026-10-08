@@ -7,6 +7,9 @@
  * 页面回到「Float 原生 + 美化包」，美化包按它本来的样子显示。
  *
  * 只改字体 / 只改 :root 颜色变量的小段 CSS 不算美化包，不会让微信外观让位。
+ *
+ * 整个机制受「美化包优先」开关控制（「我」页，默认关）：关着时永远是微信外观，
+ * 不会因为备份里带着旧 CSS 就悄悄变回原生布局。
  */
 
 const ATTR = "data-skin-pack";
@@ -27,9 +30,25 @@ export function isSkinPackCss(css: string | null | undefined): boolean {
   return rest.includes("{");
 }
 
+const MODE_KEY = "float-skin-pack-mode";
+
+/** 「美化包优先」开关：默认关（始终微信外观）；开了才按上面的规则自动让位 */
+export function isSkinPackYieldEnabled(): boolean {
+  try { return localStorage.getItem(MODE_KEY) === "auto"; } catch { return false; }
+}
+
+export function setSkinPackYieldEnabled(enabled: boolean) {
+  try {
+    if (enabled) localStorage.setItem(MODE_KEY, "auto");
+    else localStorage.removeItem(MODE_KEY);
+  } catch { /* ignore */ }
+  apply();
+}
+
 function apply() {
   if (typeof document === "undefined") return;
-  const on = sources.size > 0 || (activeRoom !== null && roomPacks.has(activeRoom));
+  const on = isSkinPackYieldEnabled()
+    && (sources.size > 0 || (activeRoom !== null && roomPacks.has(activeRoom)));
   if (on) document.documentElement.setAttribute(ATTR, "on");
   else document.documentElement.removeAttribute(ATTR);
 }
