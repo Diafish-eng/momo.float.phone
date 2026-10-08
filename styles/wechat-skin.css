@@ -468,3 +468,19 @@ html .chat-app .chat-bubble-role-assistant .chat-quote-preview { left: 0; }
 html .chat-app :is(.chat-bubble-role-user, .chat-bubble-role-assistant):has(.chat-quote-preview) {
   margin-bottom: 40px !important;
 }
+
+/* ════════════ 时间小条：照微信的圆角小框，点一下切换完整日期 ════════════ */
+.chat-app { --wx-time-bg: rgba(238, 238, 238, 0.86); --wx-time-text: rgba(0, 0, 0, 0.45); }
+html[data-theme="dark"] .chat-app { --wx-time-bg: rgba(44, 44, 44, 0.9); --wx-time-text: rgba(255, 255, 255, 0.5); }
+html .chat-app .chat-time-chip {
+  background: var(--wx-time-bg) !important;
+  color: var(--wx-time-text) !important;
+  border-radius: 4px !important;
+  padding: 2px 8px !important;
+  font-size: calc(14px * var(--app-text-scale, 1)) !important;
+  line-height: 1.5;
+  cursor: pointer;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}

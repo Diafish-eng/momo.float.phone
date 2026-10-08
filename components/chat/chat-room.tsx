@@ -60,7 +60,7 @@ import { getMusicControlBridge } from "@/lib/music-control-bridge";
 import { findPlayableMatch, getNeteaseLyrics, getNeteaseSongDetail } from "@/lib/music-service";
 import { approveMemoryWriteRequest } from "@/lib/tool-executor";
 import type { MemoryWriteRequest, ToolResult } from "@/lib/tool-executor";
-import { formatChatUiTime } from "@/lib/chat-time";
+import { formatChatUiTime, formatChatShortTime, formatChatFullTime } from "@/lib/chat-time";
 import { parseActionTags } from "@/lib/action-parser";
 import { kvGet, kvSet, kvRemove } from "@/lib/kv-db";
 import { creditWalletBalance, payWithWalletBalance } from "@/lib/wallet-storage";
@@ -5999,9 +5999,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                         <div key={msg.id} className="flex flex-col gap-4" {...(hiddenEmpty ? { style: { display: "none" } } : {})} {...(isEmptyBubble && renderMsg.reasoningText && !showTime ? { "data-reasoning-only": "" } : {})}>
                             {showTime && (
                                 <div className="flex justify-center w-full">
-                                    <span className="chat-sys-msg py-[2px] px-2 rounded select-none">
-                                        {formatChatUiTime(msg.createdAt)}
-                                    </span>
+                                    <ChatTimeChip createdAt={msg.createdAt} />
                                 </div>
                             )}
                             {/* 思维链触发条（Claude app 风格）：点击打开底部弹窗 */}
@@ -6985,5 +6983,19 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             )}
 
         </div >
+    );
+}
+
+/** 微信式时间小条：默认只显示 时:分，点一下切换成完整日期（昨天 / M月D日 星期X），再点切回 */
+function ChatTimeChip({ createdAt }: { createdAt: string }) {
+    const [expanded, setExpanded] = useState(false);
+    return (
+        <span
+            className="chat-sys-msg chat-time-chip py-[2px] px-2 rounded select-none"
+            role="button"
+            onClick={() => setExpanded(v => !v)}
+        >
+            {expanded ? formatChatFullTime(createdAt) : formatChatShortTime(createdAt)}
+        </span>
     );
 }
