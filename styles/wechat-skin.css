@@ -66,25 +66,25 @@ html[data-theme="dark"] .chat-app {
 }
 
 /* ════════════ 顶栏：实色、细分割线、标题居中加粗 ════════════ */
-html .chat-app .page-shell:not(.moments-feed-page):not(.user-profile-page-root) > .page-header {
+html:not([data-skin-pack]) .chat-app .page-shell:not(.moments-feed-page):not(.user-profile-page-root) > .page-header {
   background: var(--wx-nav) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border-bottom: 0.5px solid var(--wx-line) !important;
   box-shadow: none !important;
 }
-html .chat-app .page-shell:not(.moments-feed-page):not(.user-profile-page-root) > .page-header .page-title {
+html:not([data-skin-pack]) .chat-app .page-shell:not(.moments-feed-page):not(.user-profile-page-root) > .page-header .page-title {
   color: var(--wx-text) !important;
   font-weight: 600 !important;
   font-size: calc(17px * var(--app-text-scale, 1)) !important;
 }
-html .chat-app .page-shell:not(.moments-feed-page):not(.user-profile-page-root) > .page-header .page-back-btn {
+html:not([data-skin-pack]) .chat-app .page-shell:not(.moments-feed-page):not(.user-profile-page-root) > .page-header .page-back-btn {
   color: var(--wx-text) !important;
 }
 
 /* ════════════ 聊天页背景 ════════════ */
 /* 没设壁纸：微信纯色底 */
-html .chat-app .chat-room-wrapper:not([data-has-bg-image]) {
+html:not([data-skin-pack]) .chat-app .chat-room-wrapper:not([data-has-bg-image]) {
   background-color: var(--wx-chat-bg) !important;
 }
 /* 设了壁纸 + 深色：保留壁纸，盖一层暗罩（inset 阴影画在壁纸之上、内容之下） */
@@ -93,18 +93,18 @@ html[data-theme="dark"] .chat-app .chat-room-wrapper[data-has-bg-image] {
 }
 
 /* ════════════ 头像：方形小圆角 ════════════ */
-html .chat-app .chat-msg-avatar,
-html .chat-app .chat-msg-avatar > div,
-html .chat-app .chat-msg-avatar img {
+html:not([data-skin-pack]) .chat-app .chat-msg-avatar,
+html:not([data-skin-pack]) .chat-app .chat-msg-avatar > div,
+html:not([data-skin-pack]) .chat-app .chat-msg-avatar img {
   border-radius: 4px !important;
 }
-html .chat-app .chat-room-wrapper .chat-msg-wrapper {
+html:not([data-skin-pack]) .chat-app .chat-room-wrapper .chat-msg-wrapper {
   gap: 10px !important;
 }
 
 /* ════════════ 气泡：微信小圆角 + 小尾巴 ════════════
    媒体气泡（图片/表情包/礼物）和独立 HTML 预览不套气泡底色。 */
-html .chat-app :is(.chat-bubble-role-user, .chat-bubble-role-assistant):not(.chat-bubble-media):not(.chat-bubble-html-preview) {
+html:not([data-skin-pack]) .chat-app :is(.chat-bubble-role-user, .chat-bubble-role-assistant):not(.chat-bubble-media):not(.chat-bubble-html-preview) {
   position: relative;
   border-radius: 4px !important;
   box-shadow: none !important;
@@ -113,16 +113,16 @@ html .chat-app :is(.chat-bubble-role-user, .chat-bubble-role-assistant):not(.cha
   line-height: 1.45 !important;
   overflow: visible !important;
 }
-html .chat-app .chat-bubble-role-user:not(.chat-bubble-media):not(.chat-bubble-html-preview) {
+html:not([data-skin-pack]) .chat-app .chat-bubble-role-user:not(.chat-bubble-media):not(.chat-bubble-html-preview) {
   background: var(--wx-self) !important;
   color: var(--wx-self-text) !important;
 }
-html .chat-app .chat-bubble-role-assistant:not(.chat-bubble-media):not(.chat-bubble-html-preview) {
+html:not([data-skin-pack]) .chat-app .chat-bubble-role-assistant:not(.chat-bubble-media):not(.chat-bubble-html-preview) {
   background: var(--wx-other) !important;
   color: var(--wx-other-text) !important;
 }
 /* 小尾巴：一个旋转 45° 的小方块，颜色继承气泡 */
-html .chat-app :is(.chat-bubble-role-user, .chat-bubble-role-assistant):not(.chat-bubble-media):not(.chat-bubble-html-preview)::after {
+html:not([data-skin-pack]) .chat-app :is(.chat-bubble-role-user, .chat-bubble-role-assistant):not(.chat-bubble-media):not(.chat-bubble-html-preview)::after {
   content: "";
   position: absolute;
   top: 14px;
@@ -133,52 +133,52 @@ html .chat-app :is(.chat-bubble-role-user, .chat-bubble-role-assistant):not(.cha
   transform: rotate(45deg);
   pointer-events: none;
 }
-html .chat-app .chat-bubble-role-user:not(.chat-bubble-media):not(.chat-bubble-html-preview)::after {
+html:not([data-skin-pack]) .chat-app .chat-bubble-role-user:not(.chat-bubble-media):not(.chat-bubble-html-preview)::after {
   right: -4px;
 }
-html .chat-app .chat-bubble-role-assistant:not(.chat-bubble-media):not(.chat-bubble-html-preview)::after {
+html:not([data-skin-pack]) .chat-app .chat-bubble-role-assistant:not(.chat-bubble-media):not(.chat-bubble-html-preview)::after {
   left: -4px;
 }
 
 /* ════════════ 输入栏：实色底 + 白色（深色为深灰）输入框 ════════════ */
-html .chat-app .chat-input-bar {
+html:not([data-skin-pack]) .chat-app .chat-input-bar {
   background: var(--wx-bar) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border-top: 0.5px solid var(--wx-line) !important;
 }
-html .chat-app .chat-input-bar .chat-input-textarea {
+html:not([data-skin-pack]) .chat-app .chat-input-bar .chat-input-textarea {
   background: var(--wx-field) !important;
   border: none !important;
   border-radius: 8px !important;
   color: var(--wx-text) !important;
   caret-color: var(--wx-green);
 }
-html .chat-app .chat-input-bar .chat-input-actions .ui-bare-btn {
+html:not([data-skin-pack]) .chat-app .chat-input-bar .chat-input-actions .ui-bare-btn {
   color: var(--wx-text) !important;
 }
 
 /* ════════════ 底部 tab 栏：实色，选中微信绿 ════════════ */
-html .chat-app .chat-tab-bar {
+html:not([data-skin-pack]) .chat-app .chat-tab-bar {
   background: var(--wx-bar) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border-top: 0.5px solid var(--wx-line) !important;
   box-shadow: none !important;
 }
-html .chat-app .chat-tab {
+html:not([data-skin-pack]) .chat-app .chat-tab {
   color: var(--wx-text) !important;
 }
-html .chat-app .chat-tab span {
+html:not([data-skin-pack]) .chat-app .chat-tab span {
   color: inherit !important;
 }
-html .chat-app .chat-tab.chat-tab-active {
+html:not([data-skin-pack]) .chat-app .chat-tab.chat-tab-active {
   color: var(--wx-green) !important;
 }
 
 /* ════════════ 会话列表：方形头像 ════════════ */
-html .chat-app .minimal-avatar-wrapper,
-html .chat-app .minimal-avatar-wrapper img {
+html:not([data-skin-pack]) .chat-app .minimal-avatar-wrapper,
+html:not([data-skin-pack]) .chat-app .minimal-avatar-wrapper img {
   border-radius: 6px !important;
 }
 
@@ -291,33 +291,33 @@ html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-wx
 .chat-app { --wx-list-bg: #FFFFFF; --wx-pin-bg: #EDEDED; }
 html[data-theme="dark"] .chat-app { --wx-list-bg: #111111; --wx-pin-bg: #1E1E1E; }
 
-html .chat-app .page-body:has(> .chat-list-tabs) {
+html:not([data-skin-pack]) .chat-app .page-body:has(> .chat-list-tabs) {
   background: var(--wx-list-bg) !important;
 }
 /* 搜索框：微信的浅灰圆角矩形 */
-html .chat-app .chat-search-bar {
+html:not([data-skin-pack]) .chat-app .chat-search-bar {
   background: var(--wx-nav) !important;
   border-radius: 6px !important;
   padding: 8px 12px !important;
 }
 /* 分类标签：选中改微信绿 */
-html .chat-app .chat-list-tab {
+html:not([data-skin-pack]) .chat-app .chat-list-tab {
   background: var(--wx-nav) !important;
   color: var(--wx-sub) !important;
   border-radius: 6px !important;
 }
-html .chat-app .chat-list-tab.active {
+html:not([data-skin-pack]) .chat-app .chat-list-tab.active {
   background: var(--wx-green) !important;
   color: #fff !important;
 }
 /* 会话行：48px 方头像、细分割线、置顶灰底，去掉在线小绿点 */
-html .chat-app .minimal-list-item {
+html:not([data-skin-pack]) .chat-app .minimal-list-item {
   position: relative;
   gap: 12px !important;
   padding: 12px 16px !important;
   margin: 0 -20px !important;
 }
-html .chat-app .minimal-list-item::after {
+html:not([data-skin-pack]) .chat-app .minimal-list-item::after {
   content: "";
   position: absolute;
   left: 76px;
@@ -326,30 +326,30 @@ html .chat-app .minimal-list-item::after {
   height: 0.5px;
   background: var(--wx-line);
 }
-html .chat-app .minimal-list-item.chat-pinned {
+html:not([data-skin-pack]) .chat-app .minimal-list-item.chat-pinned {
   background: var(--wx-pin-bg) !important;
 }
-html .chat-app .minimal-list-item:active {
+html:not([data-skin-pack]) .chat-app .minimal-list-item:active {
   background: var(--wx-pin-bg) !important;
   transform: none !important;
 }
-html .chat-app .minimal-avatar-wrapper {
+html:not([data-skin-pack]) .chat-app .minimal-avatar-wrapper {
   width: 48px !important;
   height: 48px !important;
   flex-shrink: 0;
   overflow: hidden;
 }
-html .chat-app .minimal-avatar-wrapper img {
+html:not([data-skin-pack]) .chat-app .minimal-avatar-wrapper img {
   padding: 0 !important;
   object-fit: cover !important;
 }
-html .chat-app .minimal-online-dot {
+html:not([data-skin-pack]) .chat-app .minimal-online-dot {
   display: none !important;
 }
 
 /* ── 会话列表顶部：居中「微信」标题，去掉身份块 / 大标题 / 分类条（分类改到通讯录） ── */
-html .chat-app .page-header-content { position: relative; }
-html .chat-app .chat-list-wx-title {
+html:not([data-skin-pack]) .chat-app .page-header-content { position: relative; }
+html:not([data-skin-pack]) .chat-app .chat-list-wx-title {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -359,37 +359,37 @@ html .chat-app .chat-list-wx-title {
   color: var(--wx-text);
   pointer-events: none;
 }
-html .chat-app .chat-list-identity,
-html .chat-app .chat-list-heading,
-html .chat-app .page-body > .chat-list-tabs {
+html:not([data-skin-pack]) .chat-app .chat-list-identity,
+html:not([data-skin-pack]) .chat-app .chat-list-heading,
+html:not([data-skin-pack]) .chat-app .page-body > .chat-list-tabs {
   display: none !important;
 }
-html .chat-app .chat-list-top {
+html:not([data-skin-pack]) .chat-app .chat-list-top {
   padding: 8px 8px 8px !important;
   background: var(--wx-nav);
 }
-html .chat-app .chat-list-top .chat-search-bar {
+html:not([data-skin-pack]) .chat-app .chat-list-top .chat-search-bar {
   background: var(--wx-field) !important;
   justify-content: center;
   padding: 7px 12px !important;
 }
-html .chat-app .chat-list-top .chat-search-input {
+html:not([data-skin-pack]) .chat-app .chat-list-top .chat-search-input {
   width: 3em !important;
   flex: 0 1 auto;
   text-align: left;
 }
-html .chat-app .chat-list-top .chat-search-bar:focus-within .chat-search-input,
-html .chat-app .chat-list-top .chat-search-input:not(:placeholder-shown) {
+html:not([data-skin-pack]) .chat-app .chat-list-top .chat-search-bar:focus-within .chat-search-input,
+html:not([data-skin-pack]) .chat-app .chat-list-top .chat-search-input:not(:placeholder-shown) {
   width: 100% !important;
   flex: 1 1 auto;
 }
 
 /* ════════════ 通讯录：照微信 ════════════ */
-html .chat-app .chat-contacts-top {
+html:not([data-skin-pack]) .chat-app .chat-contacts-top {
   margin: 0 -20px !important;
   padding: 8px 8px 8px !important;
 }
-html .chat-app .page-body:has(.chat-contacts-top) {
+html:not([data-skin-pack]) .chat-app .page-body:has(.chat-contacts-top) {
   background: var(--wx-list-bg) !important;
 }
 /* 入口行的彩色方图标（新的朋友 / 全部 / 私聊 / 群聊） */
@@ -407,22 +407,22 @@ html .chat-app .wx-entry-check {
   flex-shrink: 0;
   margin-left: auto;
 }
-html .chat-app .page-body:has(.chat-contacts-top) .minimal-list-item {
+html:not([data-skin-pack]) .chat-app .page-body:has(.chat-contacts-top) .minimal-list-item {
   padding: 8px 16px !important;
 }
-html .chat-app .page-body:has(.chat-contacts-top) .minimal-list-item::after {
+html:not([data-skin-pack]) .chat-app .page-body:has(.chat-contacts-top) .minimal-list-item::after {
   left: 68px;
 }
-html .chat-app .page-body:has(.chat-contacts-top) .minimal-avatar-wrapper {
+html:not([data-skin-pack]) .chat-app .page-body:has(.chat-contacts-top) .minimal-avatar-wrapper {
   width: 40px !important;
   height: 40px !important;
   border-radius: 4px !important;
 }
-html .chat-app .page-body:has(.chat-contacts-top) .mb-3 {
+html:not([data-skin-pack]) .chat-app .page-body:has(.chat-contacts-top) .mb-3 {
   margin: 0 !important;
 }
 /* 字母分组标题：微信的浅灰小条 */
-html .chat-app .contact-letter-header {
+html:not([data-skin-pack]) .chat-app .contact-letter-header {
   margin: 0 -20px;
   padding: 6px 16px !important;
   color: var(--wx-sub) !important;
@@ -448,7 +448,7 @@ html[data-theme="dark"] .chat-app .profile-balance-card .bg-white\/70 {
 .chat-app { --wx-quote: rgba(0, 0, 0, 0.06); }
 html[data-theme="dark"] .chat-app { --wx-quote: #2A2A2A; }
 
-html .chat-app .chat-quote-preview {
+html:not([data-skin-pack]) .chat-app .chat-quote-preview {
   position: absolute !important;
   top: calc(100% + 6px);
   margin: 0 !important;
@@ -462,17 +462,17 @@ html .chat-app .chat-quote-preview {
   width: max-content;
   max-width: min(260px, 68vw);
 }
-html .chat-app .chat-bubble-role-user .chat-quote-preview { right: 0; }
-html .chat-app .chat-bubble-role-assistant .chat-quote-preview { left: 0; }
+html:not([data-skin-pack]) .chat-app .chat-bubble-role-user .chat-quote-preview { right: 0; }
+html:not([data-skin-pack]) .chat-app .chat-bubble-role-assistant .chat-quote-preview { left: 0; }
 /* 给引用小框让出位置，免得压到下一条消息 */
-html .chat-app :is(.chat-bubble-role-user, .chat-bubble-role-assistant):has(.chat-quote-preview) {
+html:not([data-skin-pack]) .chat-app :is(.chat-bubble-role-user, .chat-bubble-role-assistant):has(.chat-quote-preview) {
   margin-bottom: 40px !important;
 }
 
 /* ════════════ 时间小条：照微信的圆角小框，点一下切换完整日期 ════════════ */
 .chat-app { --wx-time-bg: rgba(238, 238, 238, 0.86); --wx-time-text: rgba(0, 0, 0, 0.45); }
 html[data-theme="dark"] .chat-app { --wx-time-bg: rgba(44, 44, 44, 0.9); --wx-time-text: rgba(255, 255, 255, 0.5); }
-html .chat-app .chat-time-chip {
+html:not([data-skin-pack]) .chat-app .chat-time-chip {
   background: var(--wx-time-bg) !important;
   color: var(--wx-time-text) !important;
   border-radius: 4px !important;
@@ -506,4 +506,13 @@ html .chat-app .chat-time-chip {
 .chat-swipe-quote-icon[data-armed] {
   background: var(--wx-green, #07C160);
   color: #fff;
+}
+
+/* ════════════ 美化包优先 ════════════
+   有第三方美化包在生效时（<html data-skin-pack="on">，见 lib/skin-pack.ts），
+   上面带 :not([data-skin-pack]) 的微信外观全部让位，页面回到 Float 原生结构，
+   美化包按它原本的设计显示（圆头像、原生气泡、原生列表头……）。
+   这里只收掉微信专属的新增元素。 */
+html[data-skin-pack] .chat-app .chat-list-wx-title {
+  display: none;
 }

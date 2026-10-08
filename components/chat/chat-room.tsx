@@ -89,6 +89,7 @@ import { extractTextToolDirectiveText } from "@/lib/text-tool-protocol";
 import { emitChatPluginEvent, getChatPluginHookBus, runChatPluginTransform } from "@/lib/chat-plugin-hooks";
 import { CHAT_PLUGIN_TOAST_EVENT, getChatPluginRuntime } from "@/lib/chat-plugin-runtime";
 import { ChatPluginSlot } from "@/components/chat/chat-plugin-slot";
+import { isSkinPackCss, setRoomSkinPack } from "@/lib/skin-pack";
 import {
     createOrGetStorySession,
     hydrateStoryStorage,
@@ -1247,6 +1248,11 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         () => loadChatAppSettings().globalChatCustomCSS || "",
         [chatAppSettingsRevision],
     );
+    // 这个会话带了美化 CSS 时，微信外观让位（见 lib/skin-pack.ts）
+    useEffect(() => {
+        setRoomSkinPack(session.id, isSkinPackCss(globalChatCSS) || isSkinPackCss(liveCSS));
+        return () => setRoomSkinPack(session.id, false);
+    }, [session.id, globalChatCSS, liveCSS]);
     const [bgImageResolved, setBgImageResolved] = useState<string | null>(null);
     const [bgLoading, setBgLoading] = useState(!!effectiveBackgroundImage);
 

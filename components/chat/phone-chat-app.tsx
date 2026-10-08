@@ -17,6 +17,7 @@ import { formatXiaohongshuShareForPrompt, type ChatSharePayload } from "@/lib/ch
 import { CHAT_OPEN_SESSION_EVENT, CHAT_OPEN_ADD_CONTACT_EVENT } from "@/lib/chat-notification-events";
 import { CHAT_SESSIONS_MERGED_EVENT, type ChatSessionsMergedDetail } from "@/lib/chat-session-merge";
 import { getMascotSettingsSnapshot } from "@/lib/mascot-settings";
+import { isSkinPackCss, setActiveSkinRoom, setSkinPackSource } from "@/lib/skin-pack";
 
 type TabKey = "messages" | "contacts" | "feeds" | "me";
 
@@ -39,6 +40,14 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
     // Cache all visited sessions so their ChatRoom stays mounted (hidden)
     const [visitedSessions, setVisitedSessions] = useState<Map<string, ChatSession>>(new Map());
     const [dbReady, setDbReady] = useState(false);
+
+    // 有美化包在生效时，微信外观整体让位（见 lib/skin-pack.ts）
+    useEffect(() => {
+        setSkinPackSource("chat-app", isSkinPackCss(chatAppCSS), true);
+    }, [chatAppCSS]);
+    useEffect(() => {
+        setActiveSkinRoom(activeSession?.id ?? null);
+    }, [activeSession?.id]);
     const [hideTabBar, setHideTabBar] = useState(false);
 
     // Hydrate IndexedDB → in-memory caches on mount

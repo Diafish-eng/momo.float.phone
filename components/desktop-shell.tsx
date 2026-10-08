@@ -143,6 +143,7 @@ import { WeixinSyncToast } from "@/components/weixin-sync-toast";
 import { sendBrowserNotification } from "@/lib/browser-notification";
 import type { ChatSharePayload } from "@/lib/chat-share";
 import { completePendingMcpOAuthCallback } from "@/lib/tool-executor";
+import { isSkinPackCss, setSkinPackSource } from "@/lib/skin-pack";
 import { LayoutGrid, LoaderCircle, RefreshCw } from "lucide-react";
 
 const EMOJI_FONTS = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla"';
@@ -2056,6 +2057,11 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
     node.textContent = css;
     // Always re-append to ensure it's the LAST stylesheet in <head>
     document.head.appendChild(node);
+  }, [draftTheme.globalCustomCSS]);
+
+  // 有美化包在生效时，微信外观整体让位（见 lib/skin-pack.ts）
+  useEffect(() => {
+    setSkinPackSource("global", isSkinPackCss(draftTheme.globalCustomCSS), true);
   }, [draftTheme.globalCustomCSS]);
 
   // Uploaded fonts are an explicit global override. Keep this after user CSS.

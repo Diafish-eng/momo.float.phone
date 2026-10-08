@@ -36,7 +36,7 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){try{var d=document.documentElement,q=window.matchMedia('(prefers-color-scheme: dark)');function a(){var m=localStorage.getItem('float-theme-mode');d.setAttribute('data-theme',(m==='dark'||m==='light')?m:(q.matches?'dark':'light'));}a();if(q.addEventListener){q.addEventListener('change',a);}if(localStorage.getItem('float-wx-toolbar')==='on'){d.setAttribute('data-wx-toolbar','on');}}catch(e){}})();",
+              "(function(){try{var d=document.documentElement,q=window.matchMedia('(prefers-color-scheme: dark)');function a(){var m=localStorage.getItem('float-theme-mode');d.setAttribute('data-theme',(m==='dark'||m==='light')?m:(q.matches?'dark':'light'));}a();if(q.addEventListener){q.addEventListener('change',a);}if(localStorage.getItem('float-wx-toolbar')==='on'){d.setAttribute('data-wx-toolbar','on');}if(localStorage.getItem('float-skin-pack')){d.setAttribute('data-skin-pack','on');}}catch(e){}})();",
           }}
         />
         <link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials" />
