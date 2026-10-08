@@ -58,6 +58,7 @@ export function GestureController() {
     // 其它页面右滑：把「上一页」的旧节点临时垫在下面（见下方 prevPages）
     let underNodes: HTMLElement[] | null = null;
     let parentPosReset: HTMLElement | null = null;
+    let homeUnder = false;   // 应用的首页右滑：整个应用窗口滑走，露出底下还在的主屏
 
     // 左滑引用
     let rowEl: HTMLElement | null = null;
@@ -75,6 +76,7 @@ export function GestureController() {
       dimEl = null;
       underNodes = null;
       parentPosReset = null;
+      homeUnder = false;
       rowEl = null;
       iconEl = null;
     };
@@ -119,14 +121,22 @@ export function GestureController() {
               if (!parent || parent.classList.contains("page-shell")) break;
               node = parent;
             }
+            // 这块里如果还有别的正在显示的页面（当前页只是盖在它上面的浮层），就不整块滑
+            const hasOtherPage = (root: HTMLElement) =>
+              Array.from(root.querySelectorAll<HTMLElement>(".page-shell"))
+                .some((el) => el !== shell && el.offsetParent !== null && !el.contains(shell) && !shell.contains(el));
             if (found) {
-              // 这块里如果还有别的正在显示的页面（当前页只是盖在它上面的浮层），就不整块滑
-              const others = Array.from(found.querySelectorAll<HTMLElement>(".page-shell"));
-              const overlayCase = others.some((el) => el !== shell && el.offsetParent !== null && !el.contains(shell) && !shell.contains(el));
               const nodes = prevPages.get(found);
-              if (!overlayCase && nodes && nodes.length > 0) {
+              if (!hasOtherPage(found) && nodes && nodes.length > 0) {
                 pageEl = found;
                 underNodes = nodes;
+              }
+            } else {
+              // 应用首页：返回 = 退出应用。应用窗口盖在主屏上面，整个窗口滑走就能看到主屏。
+              const win = shell.closest<HTMLElement>(".mini-app-window");
+              if (win && !hasOtherPage(win)) {
+                pageEl = win;
+                homeUnder = true;
               }
             }
           }
@@ -194,7 +204,14 @@ export function GestureController() {
       pageEl.style.transition = "none";
       pageEl.style.willChange = "transform";
       if (!underEl && underNodes) mountUnderPage();
-      if (underEl) {
+      if (homeUnder && pageEl.parentElement) {
+        const dim = document.createElement("div");
+        dim.className = "chat-swipe-back-dim";
+        dim.style.zIndex = getComputedStyle(pageEl).zIndex;
+        pageEl.parentElement.insertBefore(dim, pageEl);
+        dimEl = dim;
+      }
+      if (underEl || dimEl) {
         pageEl.style.boxShadow = "-6px 0 24px rgba(0, 0, 0, 0.16)";
         if (appEl) {
           appEl.setAttribute("data-swipe-back", "");
@@ -289,7 +306,7 @@ export function GestureController() {
         const dim = dimEl;
         const underWrap = underNodes ? underEl : null;
         const posReset = parentPosReset;
-        if (under) {
+        if (under || dim) {
           const ease = "220ms cubic-bezier(0.2, 0.8, 0.2, 1)";
           for (const layer of [under, nav]) {
             if (layer) layer.style.transition = `transform ${ease}`;
