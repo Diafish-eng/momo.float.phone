@@ -73,6 +73,17 @@ export function GestureController() {
           const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
           if (hit && (hit === el || el.contains(hit))) return el;
         }
+        // 兜底：有些应用的返回键既没文字也没标记（比如音乐），就取最左上角那个只有图标的按钮
+        const buttons = root.querySelectorAll<HTMLElement>('button, [role="button"]');
+        for (let i = 0; i < buttons.length && i < 80; i++) {
+          const el = buttons[i];
+          if (el.offsetParent === null || (el as HTMLButtonElement).disabled) continue;
+          if ((el.textContent || "").trim() !== "" || !el.querySelector("svg")) continue;
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.left - box.left > 64 || r.top - box.top > 130) continue;
+          const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          if (hit && (hit === el || el.contains(hit))) return el;
+        }
       } catch { /* ignore */ }
       return null;
     };
