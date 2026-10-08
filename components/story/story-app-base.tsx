@@ -208,6 +208,7 @@ const STORY_THEMES = [
   { id: "paper", color: "#94a3b8", name: "纸白" },
   { id: "warm", color: "#b89870", name: "手账" },
   { id: "night", color: "#3a4560", name: "夜读" },
+  { id: "dusk", color: "#5a4a2f", name: "护眼" },
   { id: "ink", color: "#1a1a1a", name: "水墨" },
   { id: "rose", color: "#d4889a", name: "玫瑰" },
   { id: "sage", color: "#7a9a6a", name: "青苔" },
@@ -2298,7 +2299,7 @@ export function StoryApp({ onClose }: StoryAppProps) {
           </div>
           <div style={{ flex: 1, overflow: "auto", padding: "14px 20px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${STORY_THEMES.length}, minmax(0, 1fr))`, gap: 6 }}>
                 {STORY_THEMES.map(t => {
                   const active = (uiPrefs.theme || "paper") === t.id;
                   return (

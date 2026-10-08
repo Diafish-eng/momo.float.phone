@@ -1,0 +1,79 @@
+/* ════════════════════════════════════════════════════════════════
+   剧情主题「护眼」（dusk）：暖调深色，低对比、少蓝光，适合夜里长时间阅读。
+   走剧情自带的主题机制（data-story-theme），在剧情的主题选择里切换；
+   只定义变量，不改剧情的结构和其他主题。
+   ════════════════════════════════════════════════════════════════ */
+[data-story-theme="dusk"] {
+  color-scheme: dark;
+  --c-story-bg-top: #1b1a17;
+  --c-story-bg-mid: #1a1916;
+  --c-story-bg-bottom: #181714;
+  --c-story-ornament: rgba(201, 166, 107, 0.05);
+  --c-story-ornament-soft: transparent;
+  --c-story-text: #bdb5a6;
+  --c-story-text-light: #8f8778;
+  --c-story-text-user: #cbc3b2;
+  --c-story-heading: #ddd3bf;
+  --c-story-sub: #7f786b;
+  --c-story-accent: #c9a66b;
+  --c-story-accent-light: rgba(201, 166, 107, 0.18);
+  --c-story-bubble-bg: #23211d;
+  --c-story-bubble-border: #2f2c26;
+  --c-story-bubble-user: #29261f;
+  --c-story-btn-bg: #26241f;
+  --c-story-btn-bg-active: #302d26;
+  --c-story-btn-border: #36322a;
+  --c-story-panel: #23211d;
+  --c-story-panel-active: #2c2923;
+  --c-story-panel-border: #2f2c26;
+  --c-story-drawer-top: #1b1a17;
+  --c-story-drawer-bottom: #1f1d19;
+  --c-story-drawer-border: #2f2c26;
+  --c-story-input-bar: #22201c;
+  --c-story-input-bar-focus: #272520;
+  --c-story-input-border: #322f28;
+  --c-story-input-inner: #1a1916;
+  --c-story-input-inner-focus: #1d1b18;
+  --c-story-send-bg: #2e2b24;
+  --c-story-send-bg-active: #c9a66b;
+  --c-story-send-color: #8f8778;
+  --c-story-send-color-active: #1b1a17;
+  --c-story-meta-bg: #201e1a;
+  --c-story-meta-border: #2f2c26;
+  --c-story-cover-bg: #191815;
+  --c-story-cover-border: #2c2923;
+  --c-story-code-bg: #161512;
+  --c-story-code-color: #c5bca9;
+  --c-story-fold-bg: #201e1a;
+  --c-story-placeholder: #645e53;
+  --c-story-quote: #a39b8b;
+  --c-story-quote-bg: #1f1d19;
+  --c-story-table-header-bg: #23211d;
+  --c-story-bold-highlight: rgba(201, 166, 107, 0.18);
+  --c-story-overlay: rgba(0, 0, 0, 0.6);
+  --c-story-css-box-bg: #171613;
+  --story-paper-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.22);
+  --story-paper-shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.22), 0 6px 14px rgba(0, 0, 0, 0.16);
+}
+
+/* 剧情里少数写死浅色的地方（主要是「小手机」浮窗），在护眼主题下单独压暗 */
+[data-story-theme="dusk"] .story-mini-phone { background: #1f1d19; }
+[data-story-theme="dusk"] .story-mini-phone > header,
+[data-story-theme="dusk"] .story-mini-phone-composer,
+[data-story-theme="dusk"] .story-mini-phone-typing {
+  background: #23211d;
+  border-color: #2f2c26;
+}
+[data-story-theme="dusk"] .story-mini-phone-messages p { background: #2a2721; color: #bdb5a6; }
+[data-story-theme="dusk"] .story-mini-phone-messages > div[data-role="user"] p { background: #3a3327; }
+[data-story-theme="dusk"] .story-mini-phone-composer textarea,
+[data-story-theme="dusk"] .story-mini-phone-group-select select {
+  background: #1a1916;
+  border-color: #322f28;
+  color: #bdb5a6;
+}
+[data-story-theme="dusk"] .story-mini-phone-composer button { background: #c9a66b; color: #1b1a17; }
+[data-story-theme="dusk"] .story-mini-phone-group-select { color: #8f8778; border-color: #2f2c26; }
+[data-story-theme="dusk"] .story-mini-phone-group-empty { background: #2a2418; color: #d2a45a; border-color: #2f2c26; }
+[data-story-theme="dusk"] .story-meta-cover-fallback { background: #23211d; }
+[data-story-theme="dusk"] .story-wallpaper-preview { background: linear-gradient(145deg, #23211d, #1b1a17); }
