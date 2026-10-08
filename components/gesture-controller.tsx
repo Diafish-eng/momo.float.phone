@@ -5,7 +5,7 @@ import { useEffect } from "react";
 /**
  * 全局手势（独立文件，挂在 layout 里，不改各页面组件）：
  *
- * 1. 右滑返回：在任意带「返回」键的 PageShell 页面里，手指从左往右滑，页面跟手移动；
+ * 1. 右滑返回：在带「返回」键的页面里，手指从屏幕最左边缘往右滑，页面跟手移动；
  *    松手时滑过约 1/3 宽度或甩得够快就返回（等同点一次返回键），否则弹回原位。
  *    返回键照常可用，两者并存。导入的第三方应用跑在 iframe 里，事件传不出来，天然不受影响。
  *
@@ -13,6 +13,7 @@ import { useEffect } from "react";
  *    （派发 chat-swipe-quote 事件，由聊天室接住）。长按菜单里的「引用」照常可用。
  */
 
+const BACK_EDGE_WIDTH = 28;          // 右滑返回只认从屏幕左边这么宽的一条边起手
 const BACK_COMMIT_RATIO = 0.35;      // 滑过页面宽度的这个比例就返回
 const BACK_FLING_VELOCITY = 0.45;    // px/ms，甩得够快也返回
 const QUOTE_TRIGGER = 56;            // 左滑超过这个距离松手触发引用
@@ -108,11 +109,6 @@ export function GestureController() {
       return null;
     };
 
-    // 自带拖动/翻页手势的界面：只认从屏幕左边缘起手的右滑，免得抢它们的手势
-    const GESTURE_HEAVY =
-      'canvas, [draggable="true"], [class*="reading-viewer"], [class*="reading-pdf"], [class*="map-"], [class*="note-wall"], ' +
-      '[class*="room-view"], [class*="mixology"], [class*="mix-"], [class*="game"], [class*="vn-"], [class*="douyin"], ' +
-      '[class*="story-"], [class*="wb-"], [class*="swipe-action"]';
 
     const settleNav = (nav: PendingNav) => {
       if (nav.done) return;
@@ -235,8 +231,13 @@ export function GestureController() {
       velocity = 0;
 
       // —— 右滑返回的候选页面 ——
-      const realShell = target.closest<HTMLElement>(".page-shell");
-      const box = target.closest<HTMLElement>(APP_BOX);
+      // 和真实 App 一样：只有从屏幕最左边那一条窄边起手的右滑才算「返回」，
+      // 屏幕其它位置怎么左右滑都不会触发（不抢页面自己的横向滑动、翻页、拖动）。
+      const screen = target.closest<HTMLElement>(".phone-shell");
+      const screenLeft = screen ? screen.getBoundingClientRect().left : 0;
+      const fromEdge = startX - screenLeft <= BACK_EDGE_WIDTH;
+      const realShell = fromEdge ? target.closest<HTMLElement>(".page-shell") : null;
+      const box = fromEdge ? target.closest<HTMLElement>(APP_BOX) : null;
       let stdBtn = realShell ? realShell.querySelector<HTMLElement>(STD_BACK) : null;
       let generic = false;
       const shell = realShell ?? box;
@@ -244,7 +245,6 @@ export function GestureController() {
         // 没有标准返回键的页面（很多内置应用）：按左上角的返回键来认
         stdBtn = findBackButton(shell);
         generic = true;
-        if (stdBtn && target.closest(GESTURE_HEAVY) && startX - box.getBoundingClientRect().left > 30) stdBtn = null;
       }
       if (shell) {
         const btn = stdBtn;
