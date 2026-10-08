@@ -830,13 +830,15 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
                     aria-label="线下模式"
                     title="线下模式"
                 >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <svg className="ico-wx" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M8.6 13.4a2 2 0 0 0 0-2.8" /><path d="M11 15.4a4.8 4.8 0 0 0 0-6.8" /><path d="M13.4 17.4a7.6 7.6 0 0 0 0-10.8" /></svg>
+                    <svg className="ico-native" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0Z" />
                         <circle cx="12" cy="10" r="3" />
                     </svg>
                 </button>
                 <button onClick={onToggleEmojiPanel} disabled={inputLocked} className="ui-bare-btn text-[var(--c-text)] chat-tool-emoji" style={inputLocked ? { opacity: 0.35 } : undefined}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>
+                    <svg className="ico-wx" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M7.4 13.2a4.7 4.7 0 0 0 9.2 0Z" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>
+                    <svg className="ico-native" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>
                 </button>
                 <button onClick={onToggleStickerPanel} disabled={inputLocked} className="ui-bare-btn text-[var(--c-text)] chat-tool-sticker" style={inputLocked ? { opacity: 0.35 } : undefined}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z" /><polyline points="14 3 14 8 21 8" /><path d="M8 13h0" /><path d="M16 13h0" /><path d="M10 17c.5.3 1.2.5 2 .5s1.5-.2 2-.5" /></svg>
@@ -880,7 +882,8 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
                             onClosePanels();
                         }}
                     >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg className="ico-wx" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0" /><line x1="12" y1="17.5" x2="12" y2="21" /></svg>
+                        <svg className="ico-native" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
                             <path d="M20 3v4" /><path d="M22 5h-4" />
                         </svg>
@@ -904,6 +907,12 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
                 <ChatPluginSlot name="chat.inputToolbar" slotProps={{ isGroup }} className="chat-plugin-input-toolbar" />
             )}
 
+            {(showEmojiPanel || showStickerPanel) && (
+                <div className="chat-wx-panel-tabs">
+                    <button type="button" className="chat-wx-panel-tab" {...(showEmojiPanel ? { "data-active": "" } : {})} onClick={() => { if (!showEmojiPanel) onToggleEmojiPanel(); }}>表情</button>
+                    <button type="button" className="chat-wx-panel-tab" {...(showStickerPanel ? { "data-active": "" } : {})} onClick={() => { if (!showStickerPanel) onToggleStickerPanel(); }}>表情包</button>
+                </div>
+            )}
             {showEmojiPanel && (
                 <EmojiPanel
                     onSelect={(emoji) => appendText(emoji, { focus: false })}
@@ -1044,7 +1053,8 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
                     aria-label="返回线上模式"
                     title="返回线上模式"
                 >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <svg className="ico-wx" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M8.6 13.4a2 2 0 0 0 0-2.8" /><path d="M11 15.4a4.8 4.8 0 0 0 0-6.8" /><path d="M13.4 17.4a7.6 7.6 0 0 0 0-10.8" /></svg>
+                    <svg className="ico-native" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
                         <path d="M8 9h8" />
                         <path d="M8 13h5" />

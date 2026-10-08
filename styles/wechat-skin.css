@@ -226,8 +226,9 @@ html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-in
 html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .chat-tool-emoji {
   grid-column: 4;
 }
+/* 表情包按钮并进笑脸：点笑脸开面板，面板顶上「表情 / 表情包」切换 */
 html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .chat-tool-sticker {
-  grid-column: 5;
+  display: none !important;
 }
 html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .chat-tool-plus {
   grid-column: 6;
@@ -254,4 +255,31 @@ html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-in
 /* 线下模式的输入栏：发送键保留在最右 */
 html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions > .chat-tool-send-offline {
   grid-column: 6;
+}
+
+/* ── 工具栏图标：原生一套 / 微信一套，按开关切换 ── */
+.chat-input-actions .ico-wx { display: none; }
+.chat-wx-panel-tabs { display: none; }
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions .ico-native {
+  display: none !important;
+}
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-input-actions .ico-wx {
+  display: block !important;
+}
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-wx-panel-tabs {
+  display: flex;
+  gap: 20px;
+  padding: 10px 6px 2px;
+}
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-wx-panel-tab {
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  font-size: calc(14px * var(--app-text-scale, 1));
+  color: var(--wx-sub);
+}
+html[data-wx-toolbar="on"] .chat-room-wrapper:not(.mascot-chat-session) .chat-wx-panel-tab[data-active] {
+  color: var(--wx-text);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--wx-green);
 }
