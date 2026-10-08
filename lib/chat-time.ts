@@ -33,24 +33,28 @@ export function formatChatUiTime(dateStr: string): string {
     return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${hhmm}`;
 }
 
-/** 聊天时间小条（微信式）默认显示：只有 时:分 */
+/** 聊天时间小条（微信式）默认显示：
+ *  今天 → 「时:分」；昨天 → 「昨天 时:分」；一周内 → 「星期X 时:分」；更早 → 「M月D日 时:分」（跨年加年份） */
 export function formatChatShortTime(dateStr: string): string {
     const date = new Date(dateStr);
     if (Number.isNaN(date.getTime())) return "";
-    return `${padTwo(date.getHours())}:${padTwo(date.getMinutes())}`;
+    const now = new Date();
+    const hhmm = `${padTwo(date.getHours())}:${padTwo(date.getMinutes())}`;
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const t = date.getTime();
+    if (t >= todayStart) return hhmm;
+    if (t >= todayStart - 86400000) return `昨天 ${hhmm}`;
+    if (t >= todayStart - 6 * 86400000) return `${WEEKDAY_NAMES[date.getDay()]} ${hhmm}`;
+    const year = date.getFullYear() === now.getFullYear() ? "" : `${date.getFullYear()}年`;
+    return `${year}${date.getMonth() + 1}月${date.getDate()}日 ${hhmm}`;
 }
 
-/** 聊天时间小条点开后的完整显示：昨天 → 「昨天 时:分」；其余 → 「M月D日 星期X 时:分」（跨年加年份） */
+/** 聊天时间小条点开后的完整显示：一律「M月D日 星期X 时:分」（跨年加年份） */
 export function formatChatFullTime(dateStr: string): string {
     const date = new Date(dateStr);
     if (Number.isNaN(date.getTime())) return "";
     const now = new Date();
     const hhmm = `${padTwo(date.getHours())}:${padTwo(date.getMinutes())}`;
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterdayStart = new Date(todayStart.getTime() - 86400000);
-    if (date.getTime() < todayStart.getTime() && date.getTime() >= yesterdayStart.getTime()) {
-        return `昨天 ${hhmm}`;
-    }
     const year = date.getFullYear() === now.getFullYear() ? "" : `${date.getFullYear()}年`;
     return `${year}${date.getMonth() + 1}月${date.getDate()}日 ${WEEKDAY_NAMES[date.getDay()]} ${hhmm}`;
 }
