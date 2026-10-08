@@ -256,7 +256,7 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
                 <div className="wx-entry-group">
                     {([
                         { key: "all", label: "全部", color: "#07C160", icon: <><circle cx="8" cy="9" r="3" /><circle cx="16.5" cy="9.5" r="2.5" /><path d="M2.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" /><path d="M15 14.2c3.3-.5 6.5 1.3 6.5 4.8" /></> },
-                        { key: "private", label: "私聊", color: "#FA9D3B", icon: <><path d="M12 4c-4.7 0-8.5 3-8.5 6.8 0 2.1 1.2 4 3.1 5.2L6 19.5l3.4-1.7c.8.2 1.7.3 2.6.3 4.7 0 8.5-3 8.5-6.8S16.7 4 12 4Z" /><circle cx="12" cy="9.3" r="2" /><path d="M8.5 14c.6-1.5 2-2.3 3.5-2.3s2.9.8 3.5 2.3" /></> },
+                        { key: "private", label: "私聊", color: "#2782D7", icon: <><path d="M12 4c-4.7 0-8.5 3-8.5 6.8 0 2.1 1.2 4 3.1 5.2L6 19.5l3.4-1.7c.8.2 1.7.3 2.6.3 4.7 0 8.5-3 8.5-6.8S16.7 4 12 4Z" /><circle cx="12" cy="9.3" r="2" /><path d="M8.5 14c.6-1.5 2-2.3 3.5-2.3s2.9.8 3.5 2.3" /></> },
                         { key: "group", label: "群聊", color: "#57BE6A", icon: <><circle cx="9" cy="8.5" r="3.2" /><path d="M3 19c0-3.2 2.7-5.5 6-5.5s6 2.3 6 5.5" /><path d="M15 5.8a3 3 0 0 1 0 5.6" /><path d="M17.5 13.8c2.1.7 3.5 2.6 3.5 5.2" /></> },
                     ] as const).map(row => (
                         <div
