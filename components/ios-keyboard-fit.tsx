@@ -28,10 +28,15 @@ export function IosKeyboardFit() {
     const ua = navigator.userAgent;
     const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const vv = window.visualViewport;
-    // 调试开关：在电脑浏览器里也启用这套逻辑，方便用模拟触摸排查（正常使用不会打开）
+    // 这套适配在模拟器里正常，但在真机上键盘高度量不准（工具栏被键盘上方那条栏挡住、页面还会弹）。
+    // 在拿到真机的实际数值、调准之前默认关闭，只有在「我」页手动打开「键盘跟随（实验）」才启用。
+    let enabled = false;
     let forced = false;
-    try { forced = localStorage.getItem("float-ios-kb-debug") === "1"; } catch { /* ignore */ }
-    if ((!isIOS && !forced) || !vv) return;
+    try {
+      enabled = localStorage.getItem("float-ios-kb") === "on";
+      forced = localStorage.getItem("float-ios-kb-debug") === "1";
+    } catch { /* ignore */ }
+    if (!vv || !((isIOS && enabled) || forced)) return;
 
     const root = document.documentElement;
     let active = false;
@@ -278,5 +283,75 @@ export function IosKeyboardFit() {
     };
   }, []);
 
+  return null;
+}
+
+
+/**
+ * 键盘诊断：在屏幕左上角显示一小块实时数值（页面高度、可视区域高度、系统推了多少、安全区等）。
+ * 只在「我」页打开「键盘诊断」时出现，用来把真机上的实际数值截图发回来调准，平时不存在。
+ */
+export function KeyboardDiagnostics() {
+  useEffect(() => {
+    let on = false;
+    try { on = localStorage.getItem("float-kb-diag") === "1"; } catch { /* ignore */ }
+    if (!on) return;
+    const box = document.createElement("div");
+    box.style.cssText =
+      "position:fixed;left:6px;top:calc(env(safe-area-inset-top,0px) + 4px);z-index:2147483647;max-width:72vw;" +
+      "padding:6px 8px;border-radius:8px;background:rgba(0,0,0,.78);color:#7CFC9A;font:11px/1.35 ui-monospace,Menlo,monospace;" +
+      "white-space:pre;pointer-events:none;";
+    document.body.appendChild(box);
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none;";
+    document.body.appendChild(probe);
+    const log: string[] = [];
+    const t0 = performance.now();
+    let minVv = Infinity;
+    let maxTop = 0;
+    const render = (why: string) => {
+      const vv = window.visualViewport;
+      const root = document.documentElement;
+      const ta = document.activeElement instanceof HTMLElement && document.activeElement.matches("textarea,input") ? document.activeElement : null;
+      const taRect = ta ? ta.getBoundingClientRect() : null;
+      const bar = ta ? ta.closest(".chat-input-bar") : null;
+      const barRect = bar ? bar.getBoundingClientRect() : null;
+      if (vv) { minVv = Math.min(minVv, vv.height); maxTop = Math.max(maxTop, vv.offsetTop); }
+      log.push(`${Math.round(performance.now() - t0)} ${why}${vv ? ` h=${Math.round(vv.height)} top=${Math.round(vv.offsetTop)}` : ""}`);
+      while (log.length > 7) log.shift();
+      const standalone = (navigator as unknown as { standalone?: boolean }).standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+      box.textContent = [
+        `mode=${standalone ? "standalone" : "browser/webview"} dpr=${window.devicePixelRatio}`,
+        `inner=${window.innerWidth}x${window.innerHeight} client=${root.clientHeight} scrollY=${Math.round(window.scrollY)}`,
+        vv ? `vv h=${Math.round(vv.height)} top=${Math.round(vv.offsetTop)} pageTop=${Math.round(vv.pageTop)} scale=${vv.scale}` : "vv=none",
+        `minVvH=${Math.round(minVv)} maxTop=${Math.round(maxTop)} safeB=${Math.round(probe.getBoundingClientRect().height)}`,
+        `focus=${ta ? ta.tagName : "-"} taBottom=${taRect ? Math.round(taRect.bottom) : "-"} barBottom=${barRect ? Math.round(barRect.bottom) : "-"}`,
+        `kbVar=${root.style.getPropertyValue("--ios-kb") || "-"}`,
+        ...log,
+      ].join("\n");
+    };
+    const onFocusIn = () => render("focusin");
+    const onFocusOut = () => render("focusout");
+    const onResize = () => render("vv-resize");
+    const onScroll = () => render("vv-scroll");
+    const onWinResize = () => render("win-resize");
+    document.addEventListener("focusin", onFocusIn, true);
+    document.addEventListener("focusout", onFocusOut, true);
+    window.visualViewport?.addEventListener("resize", onResize);
+    window.visualViewport?.addEventListener("scroll", onScroll);
+    window.addEventListener("resize", onWinResize);
+    const timer = window.setInterval(() => render("tick"), 1000);
+    render("start");
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("focusin", onFocusIn, true);
+      document.removeEventListener("focusout", onFocusOut, true);
+      window.visualViewport?.removeEventListener("resize", onResize);
+      window.visualViewport?.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onWinResize);
+      box.remove();
+      probe.remove();
+    };
+  }, []);
   return null;
 }
