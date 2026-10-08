@@ -383,3 +383,48 @@ html .chat-app .chat-list-top .chat-search-input:not(:placeholder-shown) {
   width: 100% !important;
   flex: 1 1 auto;
 }
+
+/* ════════════ 通讯录：照微信 ════════════ */
+html .chat-app .chat-contacts-top {
+  margin: 0 -20px !important;
+  padding: 8px 8px 8px !important;
+}
+html .chat-app .page-body:has(.chat-contacts-top) {
+  background: var(--wx-list-bg) !important;
+}
+/* 入口行的彩色方图标（新的朋友 / 全部 / 私聊 / 群聊） */
+html .chat-app .wx-entry-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+html .chat-app .wx-entry-check {
+  color: var(--wx-green);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+html .chat-app .page-body:has(.chat-contacts-top) .minimal-list-item {
+  padding: 8px 16px !important;
+}
+html .chat-app .page-body:has(.chat-contacts-top) .minimal-list-item::after {
+  left: 68px;
+}
+html .chat-app .page-body:has(.chat-contacts-top) .minimal-avatar-wrapper {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 4px !important;
+}
+html .chat-app .page-body:has(.chat-contacts-top) .mb-3 {
+  margin: 0 !important;
+}
+/* 字母分组标题：微信的浅灰小条 */
+html .chat-app .contact-letter-header {
+  margin: 0 -20px;
+  padding: 6px 16px !important;
+  color: var(--wx-sub) !important;
+  font-weight: 400 !important;
+}

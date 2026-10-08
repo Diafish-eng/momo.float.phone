@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef, useMemo, useDeferredValue, useSyncExternalStore } from "react";
-import { loadChatContacts, ChatContact, createOrGetSession, ChatSession, addChatContact, pushChatMessage, loadChatMessages } from "@/lib/chat-storage";
+import { loadChatSessions, loadChatContacts, ChatContact, createOrGetSession, ChatSession, addChatContact, pushChatMessage, loadChatMessages } from "@/lib/chat-storage";
 import { resolveUserIdentity } from "@/lib/settings-storage";
 import { PENDING_REPLY_PREFIX } from "@/lib/friend-request-engine";
 import { loadCharacters } from "@/lib/character-storage";
@@ -42,6 +42,14 @@ type ChatContactsListProps = {
 export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, pendingAddContactId, onPendingAddContactConsumed, onPendingAddContactBack }: ChatContactsListProps) {
     const [contacts, setContacts] = useState<(ChatContact & { char?: Character })[]>([]);
     const [contactFilter, setContactFilter] = useState("");
+    // 通讯录分类：全部 / 私聊 / 群聊（原来在会话列表顶部的 All / Private / Groups）
+    const [contactView, setContactView] = useState<"all" | "private" | "group">("all");
+    const groupSessions = useMemo(
+        () => loadChatSessions().filter(s => s.isGroup && (!contactFilter.trim() || (s.groupName || "群聊").toLowerCase().includes(contactFilter.trim().toLowerCase()))),
+        // contacts 每次 refresh 都会变，借它触发群列表重新读取
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [contacts, contactFilter],
+    );
     const [latestPost, setLatestPost] = useState<Record<string, string>>({});
     const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
     const [showRequestList, setShowRequestList] = useState(false);
@@ -184,7 +192,7 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
     return (
         <div className="relative flex-1 h-full">
             <PageShell
-                title="Contacts"
+                title="通讯录"
                 onBack={onCloseApp}
                 bodyRef={bodyRef}
                 rightAction={
@@ -206,15 +214,15 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
             >
             <div className="px-5">
                 {/* Search bar */}
-                <div className="pt-5 pb-1">
-                    <div className="flex items-center justify-between mb-4 mt-2">
+                <div className="chat-list-top chat-contacts-top pt-5 pb-1">
+                    <div className="chat-list-heading flex items-center justify-between mb-4 mt-2">
                         <span className="ts-28 font-bold text-[var(--c-text-title)]">Contacts</span>
                     </div>
                     <div className="chat-search-bar">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-icon)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <input
                             className="chat-search-input ts-15 w-full bg-transparent outline-none text-[var(--c-text-title)] placeholder:text-[var(--c-icon)]"
-                            placeholder="Search contacts..."
+                            placeholder="搜索"
                             value={contactFilter}
                             onChange={(e) => setContactFilter(e.target.value)}
                         />
@@ -227,7 +235,7 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
                         className="minimal-list-item"
                         onClick={() => pendingRequests.length > 0 && setShowRequestList(true)}
                     >
-                        <div className="w-[48px] h-[48px] rounded-full bg-[var(--c-action-blue,#246bfd)] flex items-center justify-center shrink-0">
+                        <div className="wx-entry-icon" style={{ background: "#FA9D3B" }}>
                             <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                                 <circle cx="9" cy="7" r="4" />
@@ -236,7 +244,7 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
                             </svg>
                         </div>
                         <div className="flex-1 overflow-hidden h-[48px] flex flex-col justify-center">
-                            <div className="ts-16 font-medium text-[var(--c-text-title)]">New Friends</div>
+                            <div className="ts-16 font-medium text-[var(--c-text-title)]">新的朋友</div>
                         </div>
                         {pendingRequests.length > 0 && (
                             <div className="minimal-unread-count ml-auto shrink-0">{pendingRequests.length}</div>
@@ -244,7 +252,53 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
                     </div>
                 </div>
 
-                {mascotSettings.chatEnabled && (
+                {/* 分类入口：全部 / 私聊 / 群聊 */}
+                <div className="wx-entry-group">
+                    {([
+                        { key: "all", label: "全部", color: "#07C160", icon: <><circle cx="8" cy="9" r="3" /><circle cx="16.5" cy="9.5" r="2.5" /><path d="M2.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" /><path d="M15 14.2c3.3-.5 6.5 1.3 6.5 4.8" /></> },
+                        { key: "private", label: "私聊", color: "#FA9D3B", icon: <><path d="M12 4c-4.7 0-8.5 3-8.5 6.8 0 2.1 1.2 4 3.1 5.2L6 19.5l3.4-1.7c.8.2 1.7.3 2.6.3 4.7 0 8.5-3 8.5-6.8S16.7 4 12 4Z" /><circle cx="12" cy="9.3" r="2" /><path d="M8.5 14c.6-1.5 2-2.3 3.5-2.3s2.9.8 3.5 2.3" /></> },
+                        { key: "group", label: "群聊", color: "#57BE6A", icon: <><circle cx="9" cy="8.5" r="3.2" /><path d="M3 19c0-3.2 2.7-5.5 6-5.5s6 2.3 6 5.5" /><path d="M15 5.8a3 3 0 0 1 0 5.6" /><path d="M17.5 13.8c2.1.7 3.5 2.6 3.5 5.2" /></> },
+                    ] as const).map(row => (
+                        <div
+                            key={row.key}
+                            className="minimal-list-item"
+                            {...(contactView === row.key ? { "data-active": "" } : {})}
+                            onClick={() => setContactView(row.key)}
+                        >
+                            <div className="wx-entry-icon" style={{ background: row.color }}>
+                                <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">{row.icon}</svg>
+                            </div>
+                            <div className="flex-1 overflow-hidden h-[48px] flex flex-col justify-center">
+                                <div className="ts-16 font-medium text-[var(--c-text-title)]">{row.label}</div>
+                            </div>
+                            {contactView === row.key && (
+                                <svg className="wx-entry-check" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                            )}
+                        </div>
+                    ))}
+                </div>
+
+                {/* 群聊列表 */}
+                {contactView !== "private" && groupSessions.length > 0 && (
+                    <div className="flex flex-col gap-0">
+                        <div className="contact-letter-header text-[var(--c-icon)] py-2 ts-13 pl-1 font-semibold">群聊</div>
+                        {groupSessions.map(g => (
+                            <div key={g.id} className="minimal-list-item" onClick={() => onSelectSession(g)}>
+                                <div className="wx-entry-icon" style={{ background: "#57BE6A" }}>
+                                    <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8.5" r="3.2" /><path d="M3 19c0-3.2 2.7-5.5 6-5.5s6 2.3 6 5.5" /><path d="M15 5.8a3 3 0 0 1 0 5.6" /><path d="M17.5 13.8c2.1.7 3.5 2.6 3.5 5.2" /></svg>
+                                </div>
+                                <div className="flex-1 overflow-hidden h-[48px] flex flex-col justify-center">
+                                    <div className="ts-16 font-medium text-[var(--c-text-title)] truncate">{g.groupName || "群聊"}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                {contactView === "group" && groupSessions.length === 0 && (
+                    <div className="ui-empty"><span className="menu-desc">暂无群聊</span></div>
+                )}
+
+                {contactView !== "group" && mascotSettings.chatEnabled && (
                     <div className="mb-3">
                         <div className="minimal-list-item" onClick={onSelectMascot}>
                             <div className="minimal-avatar-wrapper bg-white">
@@ -260,7 +314,7 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
                 )}
 
                 {/* Contacts list grouped by pinyin initial */}
-                {contacts.length === 0 ? (
+                {contactView === "group" ? null : contacts.length === 0 ? (
                     <div className="ui-empty">
                         <span className="menu-desc">暂无联系人，去消息页右上角添加吧</span>
                     </div>
