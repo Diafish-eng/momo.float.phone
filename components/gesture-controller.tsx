@@ -49,6 +49,11 @@ export function GestureController() {
     let backBtn: HTMLElement | null = null;
     let pageWidth = 0;
     let backX = 0;
+    // 聊天室右滑：下面露出会话列表（跟微信一样两层一起动），不是白底
+    let appEl: HTMLElement | null = null;
+    let underEl: HTMLElement | null = null;
+    let navEl: HTMLElement | null = null;
+    let dimEl: HTMLElement | null = null;
 
     // 左滑引用
     let rowEl: HTMLElement | null = null;
@@ -60,6 +65,10 @@ export function GestureController() {
       mode = "none";
       pageEl = null;
       backBtn = null;
+      appEl = null;
+      underEl = null;
+      navEl = null;
+      dimEl = null;
       rowEl = null;
       iconEl = null;
     };
@@ -86,6 +95,15 @@ export function GestureController() {
           backBtn = btn;
           // 聊天 App 的四个 tab 根页面：返回 = 退出整个 App，所以整块一起动
           pageEl = shell.closest(".chat-main-content") ? (shell.closest<HTMLElement>(".chat-app") ?? shell) : shell;
+          // 聊天室本身：整层（.chat-room-layer）一起滑走，露出底下的会话列表
+          const layer = shell.classList.contains("chat-room-wrapper") ? shell.closest<HTMLElement>(".chat-room-layer") : null;
+          const app = layer?.closest<HTMLElement>(".chat-app") ?? null;
+          if (layer && app) {
+            pageEl = layer;
+            appEl = app;
+            underEl = app.querySelector<HTMLElement>(":scope > .chat-main-content");
+            navEl = app.querySelector<HTMLElement>(":scope > .chat-tab-bar");
+          }
         }
       }
 
@@ -99,11 +117,34 @@ export function GestureController() {
       if (pageEl || rowEl) mode = "pending";
     };
 
+    // 底下那层的视差：从左边 -28% 的位置跟着滑回原位，同时暗罩渐渐变透明
+    const layoutUnder = (progress: number) => {
+      const shift = -(1 - progress) * 0.28 * pageWidth;
+      if (underEl) underEl.style.transform = `translate3d(${shift}px,0,0)`;
+      if (navEl) navEl.style.transform = `translate3d(${shift}px,0,0)`;
+      if (dimEl) dimEl.style.opacity = String(0.22 * (1 - progress));
+    };
+
     const beginBack = () => {
       if (!pageEl) return;
       pageWidth = pageEl.offsetWidth || window.innerWidth;
       pageEl.style.transition = "none";
       pageEl.style.willChange = "transform";
+      if (appEl && underEl) {
+        appEl.setAttribute("data-swipe-back", "");
+        pageEl.style.boxShadow = "-6px 0 24px rgba(0, 0, 0, 0.16)";
+        if (navEl) navEl.style.display = "";
+        const dim = document.createElement("div");
+        dim.className = "chat-swipe-back-dim";
+        appEl.appendChild(dim);
+        dimEl = dim;
+        for (const el of [underEl, navEl]) {
+          if (!el) continue;
+          el.style.transition = "none";
+          el.style.willChange = "transform";
+        }
+        layoutUnder(0);
+      }
       backX = 0;
       mode = "back";
     };
@@ -147,6 +188,7 @@ export function GestureController() {
         if (event.cancelable) event.preventDefault();
         backX = Math.max(0, dx - DECIDE_SLOP);
         pageEl.style.transform = `translate3d(${backX}px,0,0)`;
+        if (underEl) layoutUnder(Math.min(1, backX / pageWidth));
       } else if (mode === "quote" && rowEl) {
         if (event.cancelable) event.preventDefault();
         const pulled = Math.max(0, -dx - DECIDE_SLOP);
@@ -175,6 +217,18 @@ export function GestureController() {
         const commit = backX > pageWidth * BACK_COMMIT_RATIO || (velocity > BACK_FLING_VELOCITY && backX > 24);
         el.style.transition = "transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)";
         el.style.transform = commit ? `translate3d(${pageWidth}px,0,0)` : "translate3d(0,0,0)";
+        const app = appEl;
+        const under = underEl;
+        const nav = navEl;
+        const dim = dimEl;
+        if (under) {
+          const ease = "220ms cubic-bezier(0.2, 0.8, 0.2, 1)";
+          for (const layer of [under, nav]) {
+            if (layer) layer.style.transition = `transform ${ease}`;
+          }
+          if (dim) dim.style.transition = `opacity ${ease}`;
+          layoutUnder(commit ? 1 : 0);
+        }
         window.setTimeout(() => {
           if (commit) btn.click();
           // 等返回逻辑把页面换掉后再清样式，避免闪一下原页面
@@ -182,6 +236,17 @@ export function GestureController() {
             el.style.transition = "";
             el.style.transform = "";
             el.style.willChange = "";
+            el.style.boxShadow = "";
+            for (const layer of [under, nav]) {
+              if (!layer) continue;
+              layer.style.transition = "";
+              layer.style.transform = "";
+              layer.style.willChange = "";
+            }
+            // 没返回成功：聊天室还开着，底部栏恢复隐藏
+            if (nav && !commit) nav.style.display = "none";
+            dim?.remove();
+            app?.removeAttribute("data-swipe-back");
           }, commit ? 80 : 0);
         }, 230);
       } else if (mode === "quote" && rowEl) {

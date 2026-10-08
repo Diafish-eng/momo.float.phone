@@ -67,9 +67,10 @@ html[data-theme="dark"] .chat-app {
 
 /* ════════════ 顶栏：实色、细分割线、标题居中加粗 ════════════ */
 html:not([data-skin-pack]) .chat-app .page-shell:not(.moments-feed-page):not(.user-profile-page-root) > .page-header {
-  background: var(--wx-nav) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  /* 毛玻璃：半透明底 + 模糊，聊天内容/壁纸滚到顶栏下面时能朦胧透出来（跟 Float 原生、微信一致） */
+  background: color-mix(in srgb, var(--wx-nav) 72%, transparent) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   border-bottom: 0.5px solid var(--wx-line) !important;
   box-shadow: none !important;
 }
@@ -520,4 +521,17 @@ html:not([data-skin-pack]) .chat-app .chat-time-chip {
    这里只收掉微信专属的新增元素。 */
 html[data-skin-pack] .chat-app .chat-list-wx-title {
   display: none;
+}
+
+/* ════════════ 右滑返回时：底下露出会话列表 + 一层渐隐的暗罩 ════════════ */
+.chat-swipe-back-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 29;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+.chat-app[data-swipe-back] {
+  background: var(--wx-list-bg, #fff) !important;
 }
