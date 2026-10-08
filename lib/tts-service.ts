@@ -160,7 +160,7 @@ function normalizeMinimaxPitch(pitch: number | undefined): number {
     return Math.min(MINIMAX_PITCH_MAX, Math.max(MINIMAX_PITCH_MIN, Math.round(pitch)));
 }
 
-async function synthesizeMinimax(text: string, config: VoiceApiConfig, emotion?: string): Promise<Blob | null> {
+async function synthesizeMinimax(text: string, config: VoiceApiConfig, emotion?: string, noEmotion = false): Promise<Blob | null> {
     if (!config.apiKey) throw new Error("Minimax API Key 未配置");
     const cleaned = sanitizeMinimaxText(text, config.model);
     text = cleaned.text;
@@ -178,7 +178,7 @@ async function synthesizeMinimax(text: string, config: VoiceApiConfig, emotion?:
     const modelId = String(config.model || "").toLowerCase();
     // whisper / fluent 只有 speech-2.6、2.8 系列支持，老模型传了会报错，直接不传
     const newEmotionOk = modelId.includes("2.6") || modelId.includes("2.8");
-    if (normalizedEmotion && MINIMAX_EMOTIONS.has(normalizedEmotion)
+    if (!noEmotion && normalizedEmotion && MINIMAX_EMOTIONS.has(normalizedEmotion)
         && (newEmotionOk || (normalizedEmotion !== "whisper" && normalizedEmotion !== "fluent"))) {
         voiceSetting.emotion = normalizedEmotion;
     }
@@ -206,7 +206,12 @@ async function synthesizeMinimax(text: string, config: VoiceApiConfig, emotion?:
         }),
     });
 
+    // 情绪参数不是所有音色/模型都支持（克隆音色、老模型常见）：带情绪失败时，去掉情绪再试一次。
+    // 试听用的是不带情绪的固定句子，所以会出现"试听正常、角色语音失败"。
+    const retryWithoutEmotion = () => synthesizeMinimax(text, config, undefined, true);
+
     if (!response.ok) {
+        if (voiceSetting.emotion) return retryWithoutEmotion();
         const err = await response.json().catch(() => ({}));
         throw new Error(err.base_resp?.status_msg || `Minimax API 请求失败 (${response.status})`);
     }
@@ -221,6 +226,7 @@ async function synthesizeMinimax(text: string, config: VoiceApiConfig, emotion?:
         return new Blob([bytes], { type: "audio/mpeg" });
     }
 
+    if (voiceSetting.emotion) return retryWithoutEmotion();
     throw new Error(data.base_resp?.status_msg || "Minimax 未返回音频数据");
 }
 

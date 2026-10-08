@@ -2336,7 +2336,7 @@ function synthesizeVoiceForMessage(msgId: string, characterId: string, speechTex
         const vc = resolveVoiceConfig(characterId);
         if (!vc) throw new Error("未绑定语音配置");
         const blob = await synthesizeSpeech(speechText, vc);
-        if (!blob) throw new Error("合成失败");
+        if (!blob) throw new Error("这句话去掉动作/语气标记后没有可读的文字");
         const dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result as string);
@@ -2357,6 +2357,7 @@ function VoiceMessageBubble({ msg, characterId, onUpdate, defaultTranslationExpa
     const [playing, setPlaying] = useState(false);
     const [synthesizing, setSynthesizing] = useState(false);
     const [synthFailed, setSynthFailed] = useState(false);
+    const [synthError, setSynthError] = useState("");
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const mountedRef = useRef(true);
     useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
@@ -2412,10 +2413,12 @@ function VoiceMessageBubble({ msg, characterId, onUpdate, defaultTranslationExpa
                 setSynthesizing(false);
                 playSrc(dataUrl);
             })
-            .catch(() => {
+            .catch((e: unknown) => {
                 if (!mountedRef.current) return;
                 setSynthesizing(false);
                 setSynthFailed(true);
+                // 把真实原因显示出来，方便排查（之前只显示"合成失败"）
+                setSynthError(e instanceof Error ? e.message : String(e));
             });
     };
 
@@ -2453,7 +2456,7 @@ function VoiceMessageBubble({ msg, characterId, onUpdate, defaultTranslationExpa
                     />
                 ))}
             </div>
-            <span className="voice-msg-dur">{synthFailed ? "合成失败·点击重试" : `${duration}"`}</span>
+            <span className="voice-msg-dur">{synthFailed ? `合成失败${synthError ? `：${synthError.slice(0, 60)}` : ""}·点击重试` : `${duration}"`}</span>
         </div>
     );
 }
