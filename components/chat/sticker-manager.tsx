@@ -27,13 +27,18 @@ import {
 } from "@/lib/custom-sticker-storage";
 import { loadChatContacts } from "@/lib/chat-storage";
 import { PageShell } from "@/components/ui/page-shell";
+import { Avatar } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/modal";
 
 export function StickerManager({ onBack }: { onBack: () => void }) {
     const contactIds = new Set(loadChatContacts().map(c => c.characterId));
-    const characters = loadCharacters().filter(c => contactIds.has(c.id));
+    const allCharacters = loadCharacters();
+    const characters = allCharacters.filter(c => contactIds.has(c.id));
     const [packs, setPacks] = useState<StickerPack[]>([]);
     const [editingPack, setEditingPack] = useState<StickerPack | null>(null);
+    // 第二个入口：按角色勾选图集。写的还是同一份 图集→角色 绑定表，和图集里的「智能角色绑定」互通
+    const [tab, setTab] = useState<"pack" | "char">("pack");
+    const [bindingCharId, setBindingCharId] = useState<string | null>(null);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [deletingPackId, setDeletingPackId] = useState<string | null>(null);
 
@@ -56,9 +61,70 @@ export function StickerManager({ onBack }: { onBack: () => void }) {
         );
     }
 
+    const bindingChar = bindingCharId ? allCharacters.find(c => c.id === bindingCharId) : undefined;
+    if (bindingChar) {
+        return (
+            <CharacterPackBinder
+                character={bindingChar}
+                packs={packs}
+                onBack={() => { setBindingCharId(null); refresh(); }}
+            />
+        );
+    }
+
+    // 通讯录里的角色排前面，其余角色跟在后面（与图集编辑页一样，所有角色都能绑）
+    const bindableCharacters = [...characters, ...allCharacters.filter(c => !contactIds.has(c.id))];
+    const packCountByChar: Record<string, number> = {};
+    if (tab === "char") {
+        for (const pack of packs) {
+            for (const charId of getPackAssignments(pack.id)) {
+                packCountByChar[charId] = (packCountByChar[charId] ?? 0) + 1;
+            }
+        }
+    }
+
     return (
         <PageShell title="表情包管理" onBack={onBack} className="absolute inset-0 z-[100]">
             <div className="px-5 pt-4 pb-8 h-full overflow-y-auto">
+                <div className="flex p-1 mb-4 rounded-full bg-black/5 dark:bg-white/10">
+                    {([["pack", "按图集"], ["char", "按角色"]] as const).map(([key, label]) => (
+                        <button
+                            key={key}
+                            type="button"
+                            onClick={() => setTab(key)}
+                            className={`flex-1 h-8 rounded-full ts-13 font-medium cursor-pointer transition-colors ${tab === key ? "bg-[var(--c-card)] text-[var(--c-text-title)] shadow-sm" : "text-[var(--c-text)] opacity-70"}`}
+                        >{label}</button>
+                    ))}
+                </div>
+
+                {tab === "char" && (
+                    bindableCharacters.length === 0 ? (
+                        <div className="py-16 text-center ts-13 text-[var(--c-text)] opacity-60">还没有角色</div>
+                    ) : (
+                        <div className="bg-[var(--c-card)] rounded-[22px] overflow-hidden">
+                            {bindableCharacters.map((c, i) => {
+                                const count = packCountByChar[c.id] ?? 0;
+                                return (
+                                    <button
+                                        key={c.id}
+                                        type="button"
+                                        onClick={() => setBindingCharId(c.id)}
+                                        className={`w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer active:bg-black/5 dark:active:bg-white/5 ${i > 0 ? "border-t border-[var(--c-card-border)]/20" : ""}`}
+                                    >
+                                        <Avatar src={c.avatar ?? undefined} name={c.name || "?"} />
+                                        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                            <span className="ts-15 font-medium text-[var(--c-text-title)] truncate">{c.name}</span>
+                                            <span className="ts-12 text-[var(--c-text)] opacity-60">{count > 0 ? `已绑定 ${count} 个图集` : "未绑定"}</span>
+                                        </div>
+                                        <ChevronRight size={18} className="text-[var(--c-text)] opacity-40 shrink-0" />
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )
+                )}
+
+                {tab === "pack" && (
                 <div className="grid grid-cols-2 gap-4">
                     {packs.map((pack, i) => {
                         const assignedIds = getPackAssignments(pack.id);
@@ -125,6 +191,7 @@ export function StickerManager({ onBack }: { onBack: () => void }) {
                         <span className="ts-14 font-medium text-[var(--c-text)]">新建图集</span>
                     </button>
                 </div>
+                )}
             </div>
 
             {showCreateDialog && createPortal(
@@ -151,6 +218,87 @@ export function StickerManager({ onBack }: { onBack: () => void }) {
                 />,
                 document.querySelector(".phone-shell") ?? document.body
             )}
+        </PageShell>
+    );
+}
+
+// ── 按角色绑定：选一个角色，勾选属于 TA 的图集 ──
+
+function CharacterPackBinder({
+    character,
+    packs,
+    onBack,
+}: {
+    character: Character;
+    packs: StickerPack[];
+    onBack: () => void;
+}) {
+    const [boundIds, setBoundIds] = useState<string[]>(() => getCharacterPackIds(character.id));
+    const refreshBound = () => setBoundIds(getCharacterPackIds(character.id));
+
+    const handleToggle = (packId: string) => {
+        togglePackAssignment(packId, character.id);
+        refreshBound();
+    };
+
+    const setAll = (bound: boolean) => {
+        const current = new Set(getCharacterPackIds(character.id));
+        for (const pack of packs) {
+            if (current.has(pack.id) !== bound) togglePackAssignment(pack.id, character.id);
+        }
+        refreshBound();
+    };
+
+    const boundCount = packs.filter(p => boundIds.includes(p.id)).length;
+
+    return (
+        <PageShell title={`${character.name} 的表情包`} onBack={onBack} className="absolute inset-0 z-[100]">
+            <div className="px-5 pt-4 pb-8 h-full overflow-y-auto">
+                {packs.length === 0 ? (
+                    <div className="py-16 text-center ts-13 text-[var(--c-text)] opacity-60">还没有图集，先回到「按图集」新建一个</div>
+                ) : (
+                    <>
+                        <div className="flex items-center justify-between mb-3 px-1">
+                            <span className="ts-12 text-[var(--c-text)] opacity-60">已选 {boundCount} / {packs.length} 个图集</span>
+                            <div className="flex gap-2">
+                                <button type="button" className="ui-chip" onClick={() => setAll(true)} disabled={boundCount === packs.length}>全选</button>
+                                <button type="button" className="ui-chip" onClick={() => setAll(false)} disabled={boundCount === 0}>清空</button>
+                            </div>
+                        </div>
+                        <div className="bg-[var(--c-card)] rounded-[22px] overflow-hidden">
+                            {packs.map((pack, i) => {
+                                const checked = boundIds.includes(pack.id);
+                                return (
+                                    <button
+                                        key={pack.id}
+                                        type="button"
+                                        role="checkbox"
+                                        aria-checked={checked}
+                                        onClick={() => handleToggle(pack.id)}
+                                        className={`w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer active:bg-black/5 dark:active:bg-white/5 ${i > 0 ? "border-t border-[var(--c-card-border)]/20" : ""}`}
+                                    >
+                                        <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-center shrink-0 text-[var(--c-icon)]">
+                                            <Sticker size={20} />
+                                        </div>
+                                        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                            <span className="ts-15 font-medium text-[var(--c-text-title)] truncate">{pack.name}</span>
+                                            <span className="ts-12 text-[var(--c-text)] opacity-60 truncate">
+                                                {pack.stickers.length === 0 ? "空相册" : `${pack.stickers.length} 个表情`}
+                                                {pack.note?.trim() ? ` · ${pack.note.trim()}` : ""}
+                                            </span>
+                                        </div>
+                                        <span
+                                            className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 transition-colors ${checked ? "bg-[var(--c-icon-active)] border-transparent text-white" : "border-[var(--c-text)] opacity-40"}`}
+                                        >
+                                            {checked && <Check size={14} strokeWidth={3} />}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
+            </div>
         </PageShell>
     );
 }
