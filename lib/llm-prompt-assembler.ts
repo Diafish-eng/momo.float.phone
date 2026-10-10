@@ -17,6 +17,7 @@ import { formatCharacterRelationsForPrompt } from "./character-world-storage";
 import { buildCharacterTimeContext, buildGroupTimeContext, type CharacterTimeContext } from "./character-time";
 import { formatShoppingPaymentRequestHistory } from "./shopping-payment-request";
 import { buildGroupAdminBracketText } from "./group-admin";
+import { isStaleCharacterStickerLabel } from "./sticker-data";
 
 export type LLMMessageRole = "system" | "user" | "assistant" | "tool";
 export type LLMToolCallPayload = { id: string; name: string; args: Record<string, unknown>; thoughtSignature?: string };
@@ -1206,6 +1207,8 @@ export function formatRichMediaForHistory(msg: ChatMessage, userName: string, ch
             return `[我拍了拍${pokeTarget}]`;
         }
         case "sticker":
+            // 私聊里角色发过、但现在已失效的表情不再写进历史，免得模型照着旧记录继续发
+            if (!isGroup && msg.role === "assistant" && isStaleCharacterStickerLabel(d?.label ?? "", charName)) return "";
             return `[表情包:${d?.label ?? "表情"}]`;
         case "quote":
             return `[引用:${d?.quotePreview ?? ""}]${msg.content}`;

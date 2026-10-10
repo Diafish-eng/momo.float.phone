@@ -304,9 +304,90 @@ export function getCustomStickerExample(characterId: string): string {
     return `[表情包:${stickers[0].name}]`;
 }
 
-/** Find a custom sticker by name for a given character. */
-export function findCustomStickerByName(characterId: string, name: string): StickerItem | undefined {
-    return loadCustomStickers(characterId).find(s => s.name === name);
+/** 容错匹配用：去掉首尾空白、图片扩展名、所有空白与标点，统一小写。 */
+function normalizeStickerName(name: string): string {
+    return (name || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\.(png|jpe?g|gif|webp)$/, "")
+        .replace(/[\s\p{P}\p{S}]/gu, "");
+}
+
+/** 两个名字的字符重合度（Dice，按字计，不看顺序）：「小狗得意」对「得意小狗」= 1。 */
+function stickerNameOverlap(a: string, b: string): number {
+    const charsA = Array.from(a);
+    const charsB = Array.from(b);
+    if (charsA.length < 2 || charsB.length < 2) return 0;
+    const counts = new Map<string, number>();
+    for (const ch of charsA) counts.set(ch, (counts.get(ch) ?? 0) + 1);
+    let shared = 0;
+    for (const ch of charsB) {
+        const left = counts.get(ch) ?? 0;
+        if (left > 0) { shared++; counts.set(ch, left - 1); }
+    }
+    return (2 * shared) / (charsA.length + charsB.length);
+}
+
+const STICKER_FUZZY_MIN_OVERLAP = 0.8;
+
+/**
+ * Find a custom sticker by name for a given character.
+ * 角色（模型）写出的名字经常和表情名差一点点，找不到完全一致的就按下面的顺序兜底，
+ * 免得聊天里只剩一个灰色的 [名字]：
+ *   1. 该角色已绑定图集里，去掉空格/标点/扩展名后一致
+ *   2. 该角色已绑定图集里，字几乎一样（多/少一个字、顺序颠倒）
+ *   3. 没绑定给该角色的图集里，名字一致（图集后来被解绑时，旧消息仍能显示）
+ */
+export function findCustomStickerByName(
+    characterId: string,
+    name: string,
+    options?: { boundOnly?: boolean },
+): StickerItem | undefined {
+    const stickers = loadCustomStickers(characterId);
+    const exact = stickers.find(s => s.name === name);
+    if (exact) return exact;
+
+    const wanted = normalizeStickerName(name);
+    if (!wanted) return undefined;
+
+    const sameNormalized = stickers.find(s => normalizeStickerName(s.name) === wanted);
+    if (sameNormalized) return sameNormalized;
+
+    let best: StickerItem | undefined;
+    let bestScore = 0;
+    for (const s of stickers) {
+        const score = stickerNameOverlap(wanted, normalizeStickerName(s.name));
+        if (score > bestScore) { best = s; bestScore = score; }
+    }
+    if (best && bestScore >= STICKER_FUZZY_MIN_OVERLAP) return best;
+    if (options?.boundOnly) return undefined;
+
+    for (const pack of readPacks()) {
+        const found = pack.stickers.find(s => normalizeStickerName(s.name) === wanted);
+        if (found) return found;
+    }
+    return undefined;
+}
+
+let _usableCache: { packsRaw: string | null; assignRaw: string | null; results: Map<string, boolean> } | null = null;
+
+/**
+ * 该角色现在还发得出这个表情吗（只看已绑定给 TA 的图集，含容错匹配）。
+ * 组提示词时每条历史表情都会问一次，所以按「图集/绑定原文没变」缓存结果，避免反复解析整份图集。
+ */
+export function isStickerUsableByCharacter(characterId: string, name: string): boolean {
+    const packsRaw = kvGet(PACKS_KEY);
+    const assignRaw = kvGet(ASSIGN_KEY);
+    if (!_usableCache || _usableCache.packsRaw !== packsRaw || _usableCache.assignRaw !== assignRaw) {
+        _usableCache = { packsRaw, assignRaw, results: new Map() };
+    }
+    const key = `${characterId}\u0000${name}`;
+    let usable = _usableCache.results.get(key);
+    if (usable === undefined) {
+        usable = Boolean(findCustomStickerByName(characterId, name, { boundOnly: true }));
+        _usableCache.results.set(key, usable);
+    }
+    return usable;
 }
 
 /** Resolve a single sticker's image URL from IndexedDB. */

@@ -5,7 +5,8 @@
  * packaged image assets when a pack provides dedicated files.
  */
 
-import { loadCustomStickers } from "./custom-sticker-storage";
+import { findCustomStickerByName, isStickerUsableByCharacter } from "./custom-sticker-storage";
+import { loadCharacters } from "./character-storage";
 
 export interface StickerItem {
     name: string;
@@ -113,7 +114,22 @@ export function isKnownStickerLabel(label: string, characterIds: (string | undef
     if (findStickerByName(name)) return true;
     for (const cid of characterIds) {
         if (!cid) continue;
-        if (loadCustomStickers(cid).some(s => (s.name || "").trim() === name)) return true;
+        // 与聊天气泡用同一套查找（含容错），保证「能显示出来的」不会被当成无效表情丢掉
+        if (findCustomStickerByName(cid, name)) return true;
     }
     return false;
+}
+
+/**
+ * 历史里角色发过的表情，现在是否已经失效（表情被删、或图集不再绑定给 TA）。
+ * 失效的名字留在历史里，模型会照着继续发，聊天里就只剩一个灰色的 [名字]。
+ * 只在能按名字唯一确定角色时才判定；拿不准一律当作有效，不动历史。
+ */
+export function isStaleCharacterStickerLabel(label: string, charName: string): boolean {
+    const name = (label || "").trim();
+    if (!name || !charName) return false;
+    if (findStickerByName(name)) return false;
+    const owners = loadCharacters().filter(c => c.name === charName);
+    if (owners.length !== 1) return false;
+    return !isStickerUsableByCharacter(owners[0].id, name);
 }
