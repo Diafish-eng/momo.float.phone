@@ -227,7 +227,7 @@ export type ChatMessage = {
         memoryImportance?: number;// 记忆写入重要性
         memoryRequestStatus?: "pending" | "approved" | "ignored";
         /** 角色发起的线下见面邀请。 */
-        meetingInviteStatus?: "pending" | "accepted" | "declined";
+        meetingInviteStatus?: "pending" | "planned" | "accepted" | "declined";
         meetingInviteCharacterId?: string;
         meetingInviteCharacterName?: string;
         /** 角色本轮输出的邀请卡片原始字段，交给自定义 HTML 灵活渲染。 */

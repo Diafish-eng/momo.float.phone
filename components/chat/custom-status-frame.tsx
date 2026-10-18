@@ -29,7 +29,7 @@ function buildSrcDoc(html: string, raw: string, frameId: string, kind: "status" 
         : inject + base;
 }
 
-export function CustomStatusFrame({ html, raw, kind = "status", title = "自定义状态栏", onAction }: { html: string; raw: string; kind?: "status" | "theater" | "meeting"; title?: string; onAction?: (action: "accept" | "decline") => void }) {
+export function CustomStatusFrame({ html, raw, kind = "status", title = "自定义状态栏", onAction }: { html: string; raw: string; kind?: "status" | "theater" | "meeting"; title?: string; onAction?: (action: "accept" | "decline" | "plan") => void }) {
     const iframeRef = useRef<HTMLIFrameElement | null>(null);
     const [frameId] = useState(() => `csf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
     const [height, setHeight] = useState(FRAME_MIN_HEIGHT);
@@ -79,7 +79,7 @@ export function CustomStatusFrame({ html, raw, kind = "status", title = "自定�
             if (iframeRef.current && event.source !== iframeRef.current.contentWindow) return;
             const data = event.data as Record<string, unknown> | null;
             if (!data || data.source !== "chat-status-frame" || data.type !== "meeting-action" || data.id !== frameId) return;
-            if (data.action === "accept" || data.action === "decline") onAction?.(data.action);
+            if (data.action === "accept" || data.action === "decline" || data.action === "plan") onAction?.(data.action);
         };
         window.addEventListener("message", handleAction);
         return () => window.removeEventListener("message", handleAction);

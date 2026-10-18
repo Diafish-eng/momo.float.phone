@@ -4180,9 +4180,22 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         return true;
     };
 
-    const handleMeetingInviteAction = async (invite: ChatMessage, action: "accept" | "decline") => {
-        if (invite.mediaData?.meetingInviteStatus && invite.mediaData.meetingInviteStatus !== "pending") return;
+    const handleMeetingInviteAction = async (invite: ChatMessage, action: "accept" | "decline" | "plan") => {
+        const curInviteStatus = invite.mediaData?.meetingInviteStatus;
+        // 已彻底处理（接受/拒绝）才拦截；planned 仍允许点「开始见面」(accept)
+        if (curInviteStatus === "accepted" || curInviteStatus === "declined") return;
         const resolvedAt = new Date().toISOString();
+        if (action === "plan") {
+            // 先约定：只静默把卡片标记为 planned，不发任何用户消息、不进剧情
+            const plannedMediaData: ChatMessage["mediaData"] = {
+                ...invite.mediaData,
+                meetingInviteStatus: "planned",
+                meetingInviteResolvedAt: resolvedAt,
+            };
+            updateMessageMediaData(invite.id, plannedMediaData);
+            setMessages((current) => current.map((item) => item.id === invite.id ? { ...item, mediaData: plannedMediaData } : item));
+            return;
+        }
         if (action === "decline") {
             const nextMediaData: ChatMessage["mediaData"] = {
                 ...invite.mediaData,

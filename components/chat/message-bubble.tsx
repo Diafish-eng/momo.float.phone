@@ -45,7 +45,7 @@ interface MessageBubbleProps {
     characterId?: string;
     onMusicPlay?: (title: string, artist?: string) => void;
     onActionSelect?: (text: string) => void;
-    onMeetingInviteAction?: (msg: ChatMessage, action: "accept" | "decline") => void;
+    onMeetingInviteAction?: (msg: ChatMessage, action: "accept" | "decline" | "plan") => void;
     displayContent?: string;
     defaultTranslationExpanded?: boolean;
 }
@@ -178,7 +178,7 @@ function MeetingInviteBubble({
 }: {
     msg: ChatMessage;
     charName?: string;
-    onAction?: (msg: ChatMessage, action: "accept" | "decline") => void;
+    onAction?: (msg: ChatMessage, action: "accept" | "decline" | "plan") => void;
 }) {
     const status = msg.mediaData?.meetingInviteStatus || "pending";
     const config = resolveMeetingInviteCardConfig(loadChatAppSettings());
@@ -214,14 +214,20 @@ function MeetingInviteBubble({
     }
     return (
         <section className="meeting-invite-card" data-status={status}>
-            <style>{`.meeting-invite-card{width:250px;max-width:72vw;padding:16px;border-radius:16px;background:linear-gradient(145deg,#fffaf2,#fff);border:1px solid rgba(160,120,76,.18);box-shadow:0 8px 24px rgba(82,58,34,.10);color:#47382d}.meeting-invite-eyebrow{font-size:11px;letter-spacing:.16em;opacity:.56;margin-bottom:8px}.meeting-invite-title{display:block;font-size:15px;line-height:1.45}.meeting-invite-desc{margin:7px 0 14px;font-size:12px;opacity:.65}.meeting-invite-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.meeting-invite-actions button{border-radius:10px;padding:9px 8px}.meeting-invite-decline{border:1px solid rgba(71,56,45,.16);background:rgba(255,255,255,.72);color:inherit}.meeting-invite-accept{border:0;background:#4b4038;color:#fff}.meeting-invite-result{padding-top:3px;font-size:12px;opacity:.72}`}</style>
+            <style>{`.meeting-invite-card{width:250px;max-width:72vw;padding:16px;border-radius:16px;background:linear-gradient(145deg,#fffaf2,#fff);border:1px solid rgba(160,120,76,.18);box-shadow:0 8px 24px rgba(82,58,34,.10);color:#47382d}.meeting-invite-eyebrow{font-size:11px;letter-spacing:.16em;opacity:.56;margin-bottom:8px}.meeting-invite-title{display:block;font-size:15px;line-height:1.45}.meeting-invite-desc{margin:7px 0 14px;font-size:12px;opacity:.65}.meeting-invite-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.meeting-invite-actions button{border-radius:10px;padding:9px 8px}.meeting-invite-decline{border:1px solid rgba(71,56,45,.16);background:rgba(255,255,255,.72);color:inherit}.meeting-invite-accept{border:0;background:#4b4038;color:#fff}.meeting-invite-result{padding-top:3px;font-size:12px;opacity:.72}.meeting-invite-actions-stack{grid-template-columns:1fr}.meeting-invite-plan{border:0;background:#4b4038;color:#fff}.meeting-invite-accept-now{border:1px solid rgba(71,56,45,.16);background:rgba(255,255,255,.72);color:inherit}.meeting-invite-planned-note{font-size:12px;opacity:.72;padding:2px 2px 4px;text-align:left}`}</style>
             <div className="meeting-invite-eyebrow">OFFLINE INVITATION</div>
             <strong className="meeting-invite-title">{title}</strong>
             <p className="meeting-invite-desc">{description}</p>
             {status === "pending" ? (
-                <div className="meeting-invite-actions">
-                    <button type="button" className="meeting-invite-decline" onClick={() => onAction?.(msg, "decline")}>不同意（不要见面）</button>
-                    <button type="button" className="meeting-invite-accept" onClick={() => onAction?.(msg, "accept")}>同意</button>
+                <div className="meeting-invite-actions meeting-invite-actions-stack">
+                    <button type="button" className="meeting-invite-plan" onClick={() => onAction?.(msg, "plan")}>同意，先约定（到时候再见）</button>
+                    <button type="button" className="meeting-invite-accept-now" onClick={() => onAction?.(msg, "accept")}>现在就见面</button>
+                    <button type="button" className="meeting-invite-decline" onClick={() => onAction?.(msg, "decline")}>不同意</button>
+                </div>
+            ) : status === "planned" ? (
+                <div className="meeting-invite-actions meeting-invite-actions-stack">
+                    <div className="meeting-invite-planned-note">已约好，到时候点下面开始见面</div>
+                    <button type="button" className="meeting-invite-plan" onClick={() => onAction?.(msg, "accept")}>开始这次见面</button>
                 </div>
             ) : (
                 <div className="meeting-invite-result">{resolvedLabel}</div>
