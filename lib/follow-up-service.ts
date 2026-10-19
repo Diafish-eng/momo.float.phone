@@ -252,7 +252,9 @@ export function cancelFollowUp(sessionId: string) {
     cancelFollowUpBailout(sessionId);
     // 用户发了消息：冷场重连计数清零，按新周期重挂服务端预约
     const idleRule = resetIdleReconnectForSession(sessionId);
-    if (idleRule) void armIdleReconnectBailout({ ...idleRule, consecutiveCount: 0 });
+    // 重挂会把整段提示词再组装一遍，放在发送那一刻会顶掉气泡上屏的帧；
+    // 它只决定「之后沉默多久再来找你」，晚 1.5 秒挂上没有任何影响
+    if (idleRule) setTimeout(() => { void armIdleReconnectBailout({ ...idleRule, consecutiveCount: 0 }); }, 1500);
     // If an API call is already in-flight, mark it for cancellation
     if (firingSet.has(sessionId)) {
         cancelledWhileFiring.add(sessionId);

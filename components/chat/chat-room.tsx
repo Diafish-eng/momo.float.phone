@@ -4110,6 +4110,14 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         return true;
     };
 
+    /** 等这一帧画完再跑；页面不可见时 rAF 不触发，120ms 兜底保证一定会跑 */
+    const runAfterNextPaint = (callback: () => void) => {
+        let done = false;
+        const run = () => { if (done) return; done = true; callback(); };
+        if (typeof window.requestAnimationFrame === "function") window.requestAnimationFrame(() => { window.setTimeout(run, 0); });
+        window.setTimeout(run, 120);
+    };
+
     const handleSendText = (text: string, options?: { autoReply?: boolean }): boolean => {
         if (!ensureGroupSpeakPermission()) return false;
         if (isGenerating) {
@@ -4158,7 +4166,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             setPendingGenerate(true);
             // 按回复键发送：消息落库后立即触发模型回复（无论插件是否异步改写，
             // 都在消息真正写入后触发，避免回复基于旧上下文）
-            if (options?.autoReply) void triggerAIResponse();
+            // 先让刚发出的气泡画上屏，再开始组装提示词、请求模型（组装是重活，同帧做会卡一下）
+            if (options?.autoReply) runAfterNextPaint(() => { void triggerAIResponse(); });
         };
 
         // 聊天插件织入点 user.beforeSend：无插件时走原同步路径，
