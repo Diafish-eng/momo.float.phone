@@ -6,7 +6,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { STICKER_PACKS } from "@/lib/sticker-data";
-import { loadStickerPacksForCharacters, resolvePackStickerMap } from "@/lib/custom-sticker-storage";
+import { loadStickerPacksForCharacters } from "@/lib/custom-sticker-storage";
+import { getThemeAssetMap } from "@/lib/theme-storage";
 
 export type StickerSearchItem = {
   key: string;
@@ -15,7 +16,12 @@ export type StickerSearchItem = {
   url?: string;
   /** 内置表情的 emoji 兜底显示 */
   emoji?: string;
+  /** 自定义贴纸存在本地库里的图片 id；只在要显示时才去读图 */
+  assetId?: string;
 };
+
+/** 已读过的贴纸图片（assetId → url），整个页面共用，同一张图只读一次 */
+const stickerUrlCache = new Map<string, string>();
 
 type StickerSearchSuggestProps = {
   /** 当前输入框的原始文本 */
@@ -39,35 +45,25 @@ export function StickerSearchSuggest({ query, characterIds, onSend, onClose }: S
     return () => window.clearTimeout(timer);
   }, [query]);
 
-  // ── 加载自定义贴纸（按会话角色绑定的包），解析出 name → url ──
+  // ── 自定义贴纸：只取名字（很轻）；图片等匹配出来要显示时再读 ──
+  // 以前这里一挂载就把所有贴纸图片逐张从 IndexedDB 读出来，而联想在输入框清空时会卸载、
+  // 打下一条消息的第一个字时重新挂载，于是每条消息开头都要全量读一遍图，打字会卡
   const [customItems, setCustomItems] = useState<StickerSearchItem[]>([]);
-  const loadSeqRef = useRef(0);
   useEffect(() => {
-    const seq = ++loadSeqRef.current;
-    let cancelled = false;
-    (async () => {
-      const packs = loadStickerPacksForCharacters(characterIds).filter((pack) => pack.stickers.length > 0);
-      const urlByName: Record<string, string> = {};
-      for (const pack of packs) {
-        const map = await resolvePackStickerMap(pack);
-        for (const [name, url] of Object.entries(map)) {
-          if (url) urlByName[name] = url;
-        }
+    const packs = loadStickerPacksForCharacters(characterIds).filter((pack) => pack.stickers.length > 0);
+    const items: StickerSearchItem[] = [];
+    for (const pack of packs) {
+      for (const sticker of pack.stickers) {
+        const assetId = sticker.externalUrl ? undefined : sticker.assetId || undefined;
+        items.push({
+          key: `custom:${pack.id}:${sticker.id}`,
+          name: sticker.name,
+          url: sticker.externalUrl || (assetId ? stickerUrlCache.get(assetId) : undefined),
+          assetId,
+        });
       }
-      if (cancelled) return;
-      const items: StickerSearchItem[] = [];
-      for (const pack of packs) {
-        for (const sticker of pack.stickers) {
-          items.push({ key: `custom:${pack.id}:${sticker.id}`, name: sticker.name, url: urlByName[sticker.name] });
-        }
-      }
-      setCustomItems(items);
-    })();
-    return () => {
-      cancelled = true;
-      // 只清理最后一次加载，避免竞态时旧结果覆盖新结果
-      if (loadSeqRef.current === seq) setCustomItems([]);
-    };
+    }
+    setCustomItems(items);
   }, [characterIds]);
 
   // ── 内置表情包（emoji 兜底） ──
@@ -105,6 +101,26 @@ export function StickerSearchSuggest({ query, characterIds, onSend, onClose }: S
     return out;
   }, [debouncedQuery, builtinItems, customItems]);
 
+  // ── 只给要显示的这几张读图（最多 MAX_RESULTS 张），读过的进缓存 ──
+  const [resolvedUrls, setResolvedUrls] = useState<Record<string, string>>({});
+  const pendingIdsRef = useRef(new Set<string>());
+  useEffect(() => {
+    const missing = results
+      .map((item) => item.assetId)
+      .filter((id): id is string => !!id && !stickerUrlCache.has(id) && !pendingIdsRef.current.has(id));
+    if (missing.length === 0) return;
+    missing.forEach((id) => pendingIdsRef.current.add(id));
+    let cancelled = false;
+    void getThemeAssetMap(missing).then((map) => {
+      for (const [id, url] of Object.entries(map)) if (url) stickerUrlCache.set(id, url);
+      missing.forEach((id) => pendingIdsRef.current.delete(id));
+      if (!cancelled) setResolvedUrls((prev) => ({ ...prev, ...map }));
+    }).catch(() => { missing.forEach((id) => pendingIdsRef.current.delete(id)); });
+    return () => { cancelled = true; };
+  }, [results]);
+  const urlOf = (item: StickerSearchItem): string | undefined =>
+    item.url || (item.assetId ? stickerUrlCache.get(item.assetId) || resolvedUrls[item.assetId] : undefined);
+
   if (!debouncedQuery || results.length === 0) return null;
 
   return (
@@ -125,12 +141,12 @@ export function StickerSearchSuggest({ query, characterIds, onSend, onClose }: S
           maxWidth: "100%",
         }}
       >
-        {results.map((item) => (
+        {results.map((item) => { const url = urlOf(item); return (
           <button
             key={item.key}
             type="button"
             onClick={() => {
-              onSend(item.name, item.url);
+              onSend(item.name, url);
               onClose();
             }}
             className="shrink-0 flex flex-col items-center gap-1 px-2.5 py-2 rounded-xl bg-transparent border-none cursor-pointer transition-transform active:scale-95"
@@ -138,8 +154,8 @@ export function StickerSearchSuggest({ query, characterIds, onSend, onClose }: S
             title={item.name}
           >
             <span className="w-14 h-14 flex items-center justify-center overflow-hidden">
-              {item.url ? (
-                <img src={item.url} alt={item.name} className="w-14 h-14 object-contain" draggable={false} />
+              {url ? (
+                <img src={url} alt={item.name} className="w-14 h-14 object-contain" draggable={false} />
               ) : item.emoji ? (
                 <span className="text-[32px] leading-none">{item.emoji}</span>
               ) : (
@@ -148,7 +164,7 @@ export function StickerSearchSuggest({ query, characterIds, onSend, onClose }: S
             </span>
             <span className="ts-11 text-[var(--c-text)] opacity-75 max-w-[64px] truncate leading-tight">{item.name}</span>
           </button>
-        ))}
+        ); })}
       </div>
     </div>
   );
