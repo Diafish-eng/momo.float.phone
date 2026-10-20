@@ -1815,9 +1815,11 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         };
     }, [session.contactId]);
 
+    // 只有礼物选择框打开时才需要：它要把所有会话的消息逐个过一遍找「已送出的礼物」，
+    // 记录多时每来一条消息就白算几十毫秒（手机上更久），正好卡在发消息那一下
     const availableShoppingGifts = useMemo(
-        () => loadDeliveredShoppingGifts(),
-        [messages],
+        () => (richModal === "gift" ? loadDeliveredShoppingGifts() : []),
+        [richModal, messages],
     );
 
     useEffect(() => {

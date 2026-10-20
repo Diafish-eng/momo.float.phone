@@ -1210,8 +1210,11 @@ function normalizeLegacyTextToolHistory(messages: ChatMessage[]): {
 
 function refreshSessionPreviewMetadata(sessions: ChatSession[]): NormalizedList<ChatSession> {
     let changed = false;
+    // 一遍算出全部会话的最后一条消息：loadChatSessions 调用很频繁（组装提示词、列表、通知等），
+    // 逐个会话去扫全部消息在记录多时要几十毫秒
+    const lastVisibleBySession = getLastVisibleMessagesBySession();
     const items = sessions.map(session => {
-        const lastMsg = getLastVisibleSessionMessage(session.id);
+        const lastMsg = lastVisibleBySession.get(session.id) ?? null;
         const nextLastMessageId = lastMsg?.id;
         const nextPreview = lastMsg ? getChatMessagePreview(lastMsg) : "";
         const nextUpdatedAt = lastMsg?.createdAt || session.updatedAt;

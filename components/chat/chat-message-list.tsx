@@ -145,14 +145,39 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
         }
     }, [activeSession]);
 
-    // 聊天室打开时列表被盖住看不见：这期间不跟着每条消息重画（记录多时一次要上百毫秒，
-    // 正好卡在刚发完消息、接着打字的时候）。回到列表时上面的 activeSession 副作用会整体刷新一次。
+    // 列表看不见时不跟着每条消息重画（记录多时一次要上百毫秒，正好卡在刚发完消息、接着打字的时候）：
+    // 一是聊天室打开、列表被盖住——回到列表时上面的 activeSession 副作用会整体刷新一次；
+    // 二是整个列表被 display:none 藏起来（例如常驻挂载的聊天小窗没打开）——重新显示时由下面的
+    // IntersectionObserver 补刷一次。
     const listCoveredRef = React.useRef(Boolean(activeSession));
     listCoveredRef.current = Boolean(activeSession);
+    const listRootRef = React.useRef<HTMLDivElement>(null);
+    const listShownRef = React.useRef(true);
+    const listStaleRef = React.useRef(false);
+    const isListHidden = () => listCoveredRef.current || !listShownRef.current;
+
+    useEffect(() => {
+        if (!activeSession) listStaleRef.current = false;
+    }, [activeSession]);
+
+    useEffect(() => {
+        const el = listRootRef.current;
+        if (!el || typeof IntersectionObserver === "undefined") return;
+        const observer = new IntersectionObserver(entries => {
+            const shown = entries[entries.length - 1]?.isIntersecting ?? true;
+            listShownRef.current = shown;
+            if (shown && listStaleRef.current && !listCoveredRef.current) {
+                listStaleRef.current = false;
+                setSessions([...loadChatSessions()]);
+            }
+        });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
 
     useEffect(() => {
         const refreshSessions = () => {
-            if (listCoveredRef.current) return;
+            if (isListHidden()) { listStaleRef.current = true; return; }
             setSessions([...loadChatSessions()]);
         };
         // 每发/收一条消息都会触发这个事件，而且是在「消息落库」的同一瞬间同步触发。
@@ -161,11 +186,11 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
         // 改成：等这一帧画完再更新，并且只读内存里已经增量更新好的那份，不重算。
         let pushedTimer = 0;
         const onMessagePushed = () => {
-            if (listCoveredRef.current) return;
+            if (isListHidden()) { listStaleRef.current = true; return; }
             if (pushedTimer) return;
             pushedTimer = window.setTimeout(() => {
                 pushedTimer = 0;
-                if (listCoveredRef.current) return;
+                if (isListHidden()) { listStaleRef.current = true; return; }
                 setSessions([...peekChatSessions()]);
             }, 250);
         };
@@ -208,7 +233,7 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
     };
 
     return (
-        <div className="relative flex-1 h-full">
+        <div ref={listRootRef} className="relative flex-1 h-full">
             <PageShell
                 className="chat-list-page"
                 leftAction={

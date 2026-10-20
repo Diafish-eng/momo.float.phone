@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { loadChatSessions, saveChatSessions, type ChatSession } from "@/lib/chat-storage";
+import { loadChatSessions, peekChatSessions, saveChatSessions, type ChatSession } from "@/lib/chat-storage";
 
 const CONTROL_ATTR = "data-chat-reasoning-visibility-control";
 const HIDDEN_ATTR = "data-chat-reasoning-hidden-by-setting";
@@ -20,7 +20,9 @@ function getSessionId(wrapper: HTMLElement): string | null {
 }
 
 function readHidden(sessionId: string): boolean {
-  const session = loadChatSessions().find((item) => item.id === sessionId) as
+  // 只读一个开关：用内存里的会话快照即可。loadChatSessions 会顺带重算全部会话的预览，
+  // 而这里每次界面有变化都会跑，记录多时会让发消息、AI 回复时多卡一截
+  const session = peekChatSessions().find((item) => item.id === sessionId) as
     | ChatSessionWithReasoningVisibility
     | undefined;
   return session?.hideReasoning === true;
