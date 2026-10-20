@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { ChevronLeft } from "lucide-react";
-import { CHAT_MESSAGE_PUSHED_EVENT, loadChatSessions, peekChatSessions, loadChatContacts, ChatSession, createOrGetSession, createGroupSession, pushChatMessage, addChatContact, loadChatMessages, getLastVisibleSessionMessage, getChatMessagePreview } from "@/lib/chat-storage";
+import { CHAT_MESSAGE_PUSHED_EVENT, loadChatSessions, peekChatSessions, loadChatContacts, ChatSession, createOrGetSession, createGroupSession, pushChatMessage, addChatContact, loadChatMessages, getLastVisibleMessagesBySession, getChatMessagePreview, ChatMessage } from "@/lib/chat-storage";
 import { loadCharacters } from "@/lib/character-storage";
 import { Character } from "@/lib/character-types";
 import { resolveUserIdentity, USER_IDENTITIES_UPDATED_EVENT } from "@/lib/settings-storage";
@@ -54,21 +54,20 @@ function pickLaterTime(a?: string | null, b?: string | null): string {
  * 会话在列表里是否有内容：线上可见消息、线下模式记录都算。
  * 只在线下聊过的会话（或线上记录被清空的会话）不该从列表里消失。
  */
-function hasSessionListContent(sessionId: string): boolean {
-    return Boolean(getLastVisibleSessionMessage(sessionId)) || Boolean(getLastChatOfflineTurn(sessionId));
+function hasSessionListContent(sessionId: string, lastVisible: Map<string, ChatMessage>): boolean {
+    return lastVisible.has(sessionId) || Boolean(getLastChatOfflineTurn(sessionId));
 }
 
 /** 列表排序用的活跃时间：线上最后一条与线下最后一条里更晚的那个 */
-function getSessionListTime(session: ChatSession): string {
-    const onlineTime = getLastVisibleSessionMessage(session.id)?.createdAt;
+function getSessionListTime(session: ChatSession, lastVisible: Map<string, ChatMessage>): string {
+    const onlineTime = lastVisible.get(session.id)?.createdAt;
     const offlineTime = getLastChatOfflineTurn(session.id)?.createdAt;
     return pickLaterTime(onlineTime, offlineTime) || session.updatedAt;
 }
 
 /** Fallback: find last non-empty, non-system message preview when session preview is empty */
-function getLastNonEmptyPreview(sessionId: string): string {
+function getLastNonEmptyPreview(sessionId: string, lastVisible: ChatMessage | null): string {
     try {
-        const lastVisible = getLastVisibleSessionMessage(sessionId);
         if (lastVisible) {
             const preview = getChatMessagePreview(lastVisible) || lastVisible.content;
             if (preview.trim()) return preview;
@@ -146,17 +145,27 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
         }
     }, [activeSession]);
 
+    // 聊天室打开时列表被盖住看不见：这期间不跟着每条消息重画（记录多时一次要上百毫秒，
+    // 正好卡在刚发完消息、接着打字的时候）。回到列表时上面的 activeSession 副作用会整体刷新一次。
+    const listCoveredRef = React.useRef(Boolean(activeSession));
+    listCoveredRef.current = Boolean(activeSession);
+
     useEffect(() => {
-        const refreshSessions = () => setSessions([...loadChatSessions()]);
+        const refreshSessions = () => {
+            if (listCoveredRef.current) return;
+            setSessions([...loadChatSessions()]);
+        };
         // 每发/收一条消息都会触发这个事件，而且是在「消息落库」的同一瞬间同步触发。
         // 原来这里直接 loadChatSessions()：它会把所有会话的预览全量重算一遍，聊天数据一多就要卡
         // 上几百毫秒到一秒多，表现就是「按了发送，字还停在输入框里，过一会儿气泡才出来」。
         // 改成：等这一帧画完再更新，并且只读内存里已经增量更新好的那份，不重算。
         let pushedTimer = 0;
         const onMessagePushed = () => {
+            if (listCoveredRef.current) return;
             if (pushedTimer) return;
             pushedTimer = window.setTimeout(() => {
                 pushedTimer = 0;
+                if (listCoveredRef.current) return;
                 setSessions([...peekChatSessions()]);
             }, 250);
         };
@@ -304,13 +313,15 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
                             const contactIds = new Set(loadChatContacts().map(c => c.characterId));
                             const allChars = loadCharacters();
                             const keyword = listFilter.trim().toLowerCase();
+                            // 每个会话的最后一条可见消息一次算好，过滤、排序、每行预览都复用
+                            const lastVisibleBySession = getLastVisibleMessagesBySession();
                             const showMascot = mascotSettings.chatEnabled
                                 && listTab !== "group"
                                 && (!keyword || (mascotSettings.nickname || "AI助手").toLowerCase().includes(keyword));
                             const regularItems = [...sessions]
                             .filter(s => {
                                 if (!(s.isGroup || contactIds.has(s.contactId))) return false;
-                                if (!hasSessionListContent(s.id)) return false;
+                                if (!hasSessionListContent(s.id, lastVisibleBySession)) return false;
                                 if (listTab === "private" && s.isGroup) return false;
                                 if (listTab === "group" && !s.isGroup) return false;
                                 if (!keyword) return true;
@@ -321,13 +332,13 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
                             .sort((a, b) => {
                                 if (a.isPinned && !b.isPinned) return -1;
                                 if (!a.isPinned && b.isPinned) return 1;
-                                const aTime = getSessionListTime(a);
-                                const bTime = getSessionListTime(b);
+                                const aTime = getSessionListTime(a, lastVisibleBySession);
+                                const bTime = getSessionListTime(b, lastVisibleBySession);
                                 return parseTime(bTime) - parseTime(aTime);
                             })
                             .map(s => (
                                 <div key={s.id}>
-                                    <SessionItem session={s} onSelect={() => onSelectSession(s)} isPinned={!!s.isPinned} />
+                                    <SessionItem session={s} lastVisibleMessage={lastVisibleBySession.get(s.id) ?? null} onSelect={() => onSelectSession(s)} isPinned={!!s.isPinned} />
                                 </div>
                             ));
                             if (!showMascot && regularItems.length === 0) {
@@ -769,10 +780,9 @@ function ContactPicker({ onClose, onSelect }: { onClose: () => void; onSelect: (
     );
 }
 
-function SessionItem({ session, onSelect, isPinned }: { session: ChatSession, onSelect: () => void, isPinned?: boolean }) {
+function SessionItem({ session, lastVisibleMessage, onSelect, isPinned }: { session: ChatSession, lastVisibleMessage: ChatMessage | null, onSelect: () => void, isPinned?: boolean }) {
     const chars = loadCharacters();
     const character = chars.find(c => c.id === session.contactId);
-    const lastVisibleMessage = getLastVisibleSessionMessage(session.id);
     const lastOfflineTurn = getLastChatOfflineTurn(session.id);
     // 线下记录比线上消息新时（含只在线下聊过的会话），列表展示线下摘要
     const offlineIsNewer = Boolean(lastOfflineTurn)
@@ -835,7 +845,7 @@ function SessionItem({ session, onSelect, isPinned }: { session: ChatSession, on
                 </div>
                 <div className="flex justify-between items-center gap-2">
                     <span className="ts-13 text-[var(--c-text)] opacity-80 truncate font-normal">
-                        {preview || getLastNonEmptyPreview(session.id)}
+                        {preview || getLastNonEmptyPreview(session.id, lastVisibleMessage)}
                     </span>
                     {session.unreadCount > 0 && (
                         <span

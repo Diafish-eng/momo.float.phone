@@ -2438,6 +2438,13 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
     setMiniChatSoundSessionId(session?.id ?? null); // 小窗正打开的会话视为实时聊天
   }, []);
   const handleMiniShareDone = useCallback(() => setMiniSharePayload(null), []);
+  // 聊天 APP 是 memo 组件：关闭回调必须稳定，否则桌面每次重渲染（例如后台小程序启动/结束）
+  // 都会连带把整个聊天 APP、聊天室和被盖住的会话列表重画一遍，发消息时会连卡好几下
+  const handleChatAppClose = useCallback(() => {
+    setActiveApp(null);
+    setActiveChatSession(null);
+    setChatInitSessionId(null);
+  }, []);
   const handleMiniChatExpand = useCallback(() => {
     setShowMiniChat(false);
     musicOverlayControllerRef.current?.closeFullPlayer();
@@ -3991,11 +3998,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
     if (activeApp === "chat") {
       return (
         <PhoneChatApp
-          onClose={() => {
-            setActiveApp(null);
-            setActiveChatSession(null);
-            setChatInitSessionId(null);
-          }}
+          onClose={handleChatAppClose}
           initialSessionId={chatInitSessionId}
           onSessionChange={setActiveChatSession}
         />

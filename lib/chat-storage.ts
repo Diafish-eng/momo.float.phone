@@ -799,14 +799,33 @@ export function reindexSessionMessageOrdersByTime(sessionId: string): void {
     }
 }
 
+// 「排序后从尾部找第一条可预览消息」等价于「可预览消息里按排序规则取最大的那条」：
+// 扫一遍取最大值即可，不用每次都把整个会话的消息过滤再排序一遍（记录多了以后这是列表卡顿的大头）。
 export function getLastVisibleSessionMessage(sessionId: string): ChatMessage | null {
-    const messages = getSortedSessionMessages(sessionId);
-    for (let i = messages.length - 1; i >= 0; i -= 1) {
-        const msg = messages[i];
+    let last: ChatMessage | null = null;
+    for (const msg of _messagesCache) {
+        if (msg.sessionId !== sessionId) continue;
+        if (last && compareChatMessages(msg, last) < 0) continue;
         if (!isSessionPreviewCandidate(msg)) continue;
-        return msg;
+        last = msg;
     }
-    return null;
+    return last;
+}
+
+/**
+ * 一次扫描算出所有会话的「最后一条可预览消息」，给聊天列表用。
+ * 列表每渲染一次要对每个会话查好几次（过滤、排序比较、预览），逐个调用
+ * getLastVisibleSessionMessage 会把全部消息扫上千遍；这里一遍扫完，结果与逐个调用一致。
+ */
+export function getLastVisibleMessagesBySession(): Map<string, ChatMessage> {
+    const result = new Map<string, ChatMessage>();
+    for (const msg of _messagesCache) {
+        const current = result.get(msg.sessionId);
+        if (current && compareChatMessages(msg, current) < 0) continue;
+        if (!isSessionPreviewCandidate(msg)) continue;
+        result.set(msg.sessionId, msg);
+    }
+    return result;
 }
 
 // ── Storage Keys (settings & follow-up stay in localStorage) ──
