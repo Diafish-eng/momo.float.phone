@@ -226,6 +226,16 @@ type CustomAppLaunchState = {
   returnTo?: CustomAppReturnTarget | null;
 };
 
+// 后台订阅聊天消息的小程序：每条消息都会给每个订阅的 APP 新开一个隐藏 iframe 跑一次。
+// iPhone（WebKit）上一个 APP 启动就要几十到几百毫秒主线程，几个同时在发消息那一刻启动，
+// 键盘和气泡就会卡住。所以排队：等打字/发送/新消息都停下一会儿再启动，并且一次只起一个。
+// 事件一条不丢，只是晚几秒送到；等太久的（BG_MAX_WAIT_MS）不再等安静，照常启动。
+const BG_QUIET_MS = 1500;
+const BG_MAX_WAIT_MS = 15_000;
+const BG_STAGGER_MS = 3_000;
+const BG_MIN_GAP_MS = 300;
+const BG_MAX_PENDING = 40;
+
 type CustomAppBackgroundEventRun = {
   id: string;
   app: InstalledCustomApp;
@@ -1078,6 +1088,12 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
   const [customAppBackgroundRuns, setCustomAppBackgroundRuns] = useState<CustomAppBackgroundEventRun[]>([]);
   const [customAppBackgroundToolRuns, setCustomAppBackgroundToolRuns] = useState<CustomAppBackgroundToolRun[]>([]);
   const backgroundRunSeqRef = useRef(0);
+  const pendingChatBackgroundRunsRef = useRef<{ run: CustomAppBackgroundEventRun; queuedAt: number }[]>([]);
+  const chatBackgroundPumpTimerRef = useRef(0);
+  const lastChatActivityAtRef = useRef(0);
+  const lastChatBackgroundLaunchAtRef = useRef(0);
+  const activeBackgroundRunCountRef = useRef(0);
+  const activeAppForBackgroundRef = useRef<DesktopIconId | null>(null);
   const pendingCustomAppBackgroundToolsRef = useRef<Map<string, PendingCustomAppBackgroundTool>>(new Map());
   const [resourcesInitialPage, setResourcesInitialPage] = useState<ResourceSubPage>("main");
   const [dwellingMounted, setDwellingMounted] = useState(false);
@@ -1635,6 +1651,51 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
     };
   }, []);
 
+  activeAppForBackgroundRef.current = activeApp;
+  useEffect(() => {
+    activeBackgroundRunCountRef.current = customAppBackgroundRuns.length;
+  }, [customAppBackgroundRuns]);
+
+  const pumpChatBackgroundRuns = useCallback(() => {
+    if (chatBackgroundPumpTimerRef.current) return;
+    const tick = () => {
+      chatBackgroundPumpTimerRef.current = 0;
+      const queue = pendingChatBackgroundRunsRef.current;
+      // 排队期间用户把这个 APP 打开到前台了：前台实例自己会收到这条消息，后台这次就不用再跑
+      const foreground = activeAppForBackgroundRef.current;
+      if (foreground) {
+        for (let i = queue.length - 1; i >= 0; i -= 1) {
+          if (toCustomAppIconId(queue[i].run.app.id) === foreground) queue.splice(i, 1);
+        }
+      }
+      if (queue.length === 0) return;
+      const now = Date.now();
+      const quiet = now - lastChatActivityAtRef.current >= BG_QUIET_MS
+        || now - queue[0].queuedAt >= BG_MAX_WAIT_MS;
+      const sinceLaunch = now - lastChatBackgroundLaunchAtRef.current;
+      const slotFree = activeBackgroundRunCountRef.current === 0 || sinceLaunch >= BG_STAGGER_MS;
+      if (quiet && slotFree && sinceLaunch >= BG_MIN_GAP_MS) {
+        const next = queue.shift()!;
+        lastChatBackgroundLaunchAtRef.current = now;
+        activeBackgroundRunCountRef.current += 1;
+        setCustomAppBackgroundRuns(prev => [...prev, next.run].slice(-12));
+      }
+      if (queue.length > 0) chatBackgroundPumpTimerRef.current = window.setTimeout(tick, 250);
+    };
+    chatBackgroundPumpTimerRef.current = window.setTimeout(tick, 250);
+  }, []);
+
+  useEffect(() => {
+    const markActivity = () => { lastChatActivityAtRef.current = Date.now(); };
+    const events = ["keydown", "input", "compositionupdate", "pointerdown", "touchstart"] as const;
+    events.forEach(name => window.addEventListener(name, markActivity, { capture: true, passive: true }));
+    return () => {
+      events.forEach(name => window.removeEventListener(name, markActivity, { capture: true }));
+      if (chatBackgroundPumpTimerRef.current) window.clearTimeout(chatBackgroundPumpTimerRef.current);
+      chatBackgroundPumpTimerRef.current = 0;
+    };
+  }, []);
+
   useEffect(() => {
     const handleCustomAppBackgroundChatEvent = (event: Event) => {
       try {
@@ -1676,8 +1737,14 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
               },
             } satisfies CustomAppBackgroundEventRun;
           });
+        // 新消息本身也算「还没停下」：AI 一条条吐气泡时，等最后一条落地再启动
+        lastChatActivityAtRef.current = Date.now();
         if (nextRuns.length > 0) {
-          setCustomAppBackgroundRuns(prev => [...prev, ...nextRuns].slice(-12));
+          const queue = pendingChatBackgroundRunsRef.current;
+          const queuedAt = Date.now();
+          queue.push(...nextRuns.map(run => ({ run, queuedAt })));
+          if (queue.length > BG_MAX_PENDING) queue.splice(0, queue.length - BG_MAX_PENDING);
+          pumpChatBackgroundRuns();
         }
       } catch (err) {
         console.warn("[CustomAppBackground] failed to queue chat.message.created event", err);
@@ -1685,7 +1752,7 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
     };
     window.addEventListener(CHAT_MESSAGE_PUSHED_EVENT, handleCustomAppBackgroundChatEvent);
     return () => window.removeEventListener(CHAT_MESSAGE_PUSHED_EVENT, handleCustomAppBackgroundChatEvent);
-  }, [activeApp, customApps]);
+  }, [activeApp, customApps, pumpChatBackgroundRuns]);
 
   // 现实桥数据事件：广播给声明订阅了 bridge.data 的自定义 APP（含后台拉起）
   useEffect(() => {
@@ -3950,11 +4017,13 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
 
   const handleCustomAppBackgroundComplete = useCallback((runId: string, result: { ok: boolean; reason: string; errors?: string[] }) => {
     setCustomAppBackgroundRuns(prev => prev.filter(run => run.id !== runId));
+    activeBackgroundRunCountRef.current = Math.max(0, activeBackgroundRunCountRef.current - 1);
+    if (pendingChatBackgroundRunsRef.current.length > 0) pumpChatBackgroundRuns();
     if (!result.ok && result.reason !== "not_subscribed") {
       const message = result.errors?.[0] || result.reason;
       console.warn(`[CustomAppBackground] ${runId} failed: ${message}`);
     }
-  }, []);
+  }, [pumpChatBackgroundRuns]);
 
   const handleCustomAppBackgroundToolComplete = useCallback((runId: string, result: { ok: boolean; reason: string; result?: unknown; error?: string }) => {
     setCustomAppBackgroundToolRuns(prev => prev.filter(run => run.id !== runId));
