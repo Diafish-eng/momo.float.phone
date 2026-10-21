@@ -57,8 +57,15 @@ const PRIMARY_DATA_MODULES: DataModuleDefinition[] = [
           "chat_plugin_vars_v2",
           "chat_plugin_fragments_v2",
           "chat_plugin_errors_v1",
+          // 共享相册
+          "ai_phone_photo_album_v1",
+          "ai_phone_album_permissions_v1",
+          "ai_phone_album_core_v1",
+          "ai_phone_album_auto_review_v1",
+          "ai_phone_album_avatar_backup_v1",
         ],
         prefixes: [
+          "ai_phone_album_discussion_v2:",
           "chat-generating:",
           "pending_reply_",
           "ai_phone_chat_offline_turns:",

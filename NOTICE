@@ -9,6 +9,13 @@ including presets, regex-based processing, and world/lore book concepts.
 SillyTavern: https://github.com/SillyTavern/SillyTavern
 SillyTavern is licensed under AGPL-3.0.
 
+The shared photo album (共享相册: components/photo-album/, lib/photo-album-*.ts,
+lib/chat-photo-markup.ts, lib/image-delivery-protocol.ts, lib/image-grid-split.ts,
+components/chat/photo-markup-editor.tsx, components/chat/group-avatar.tsx,
+styles/photo-album.css, styles/photo-editor.css) is adapted from the AGPL-3.0
+fork by Yyk-Y2k: https://github.com/Yyk-Y2k/ai-virtual-phone-Y2Kversion
+roughjs (MIT): https://github.com/rough-stuff/rough
+
 Bundled fonts (public/fonts/):
 
 - ximai.woff2: 字制区喜脉喜欢体 (FontQu Smile), © 探火（深圳）品牌策划有限公司,

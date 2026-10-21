@@ -7,6 +7,9 @@ import { estimateValueBytes } from "./data-management/serializers";
 import { openIndexedDbAtLeast } from "./idb-open";
 import { hydrateKvDb, isKvHydrated, kvEntries, kvGet, kvSet, registerKvMigration } from "./kv-db";
 import { deleteMediaRef, isMediaStoreRef, loadMediaBlob, storeMediaBlob } from "./media-cache-storage";
+import { collectPhotoAlbumAssets, isFavoriteChatPhoto, type PhotoAlbumAsset } from "./photo-album-storage";
+import { relocatePhotoMedia } from "./photo-album-core";
+import { getAlbumDiscussion, saveAlbumDiscussion } from "./photo-album-discussion";
 import { getAudioBlob, deleteTrack, loadAllTracks } from "./music-storage";
 import { momentsDb } from "./moments-db";
 import { hydrateMomentsStorage, updateMomentPost } from "./moments-storage";
@@ -219,7 +222,7 @@ async function persistChatMediaPatch(
   await chatDb.messages.put(cached ?? nextMessage);
 }
 
-async function compactChatImage(message: ChatMessage, nowIso: string): Promise<{ changed: boolean; freedBytes: number }> {
+async function compactChatImage(message: ChatMessage, nowIso: string, albumAsset?: PhotoAlbumAsset): Promise<{ changed: boolean; freedBytes: number }> {
   const mediaUrl = message.mediaUrl;
   const mediaRef = message.mediaData?.imageGenerationMediaRef;
   let sourceBlob: Blob | null = null;
@@ -281,6 +284,13 @@ async function compactChatImage(message: ChatMessage, nowIso: string): Promise<{
     mediaUrl: nextRef,
     mediaData: nextMediaData,
   };
+  if (albumAsset) {
+    // 压缩只是换了存放位置，在相册里仍是同一张照片：保住心语/评论，也不会让角色重新看一遍
+    try {
+      saveAlbumDiscussion(getAlbumDiscussion(albumAsset));
+      relocatePhotoMedia(albumAsset.id, albumAsset.mediaRef, nextRef);
+    } catch { /* ignore */ }
+  }
   const cached = updateChatMessage(message.id, {
     mediaUrl: nextMessage.mediaUrl,
     mediaData: nextMessage.mediaData,
@@ -303,7 +313,13 @@ async function compactChatXiaohongshuShareImage(message: ChatMessage, nowIso: st
   return compressed;
 }
 
+function isAlbumFavoriteMessage(message: ChatMessage): boolean {
+  return isFavoriteChatPhoto(message.sessionId, message.id);
+}
+
 export async function cleanChatImage(message: ChatMessage, nowIso: string): Promise<number> {
+  // 在相册里收藏了的聊天照片不清理
+  if (isAlbumFavoriteMessage(message)) return 0;
   const seen = new Set<string>();
   let freedBytes = 0;
   freedBytes += await deleteMediaRefWithSize(message.mediaUrl, seen);
@@ -337,13 +353,23 @@ export async function cleanChatXiaohongshuShareImage(message: ChatMessage, nowIs
   return estimateValueBytes(assetId);
 }
 
+function albumAssetsByMessage(): Map<string, PhotoAlbumAsset> {
+  try {
+    return new Map(collectPhotoAlbumAssets({ includeExcluded: true }).flatMap(asset => asset.source.kind === "chat" ? [[asset.source.messageId, asset] as const] : []));
+  } catch {
+    return new Map();
+  }
+}
+
 async function runChatImageMaintenance(result: MediaMaintenanceResult, nowMs: number, nowIso: string): Promise<void> {
   const messages = await chatDb.messages.toArray().catch(() => []);
+  let albumByMessage: Map<string, PhotoAlbumAsset> | undefined;
   for (const message of messages) {
     const isRegularImage = isChatImageMessage(message);
     const isXiaohongshuShareImage = isChatXiaohongshuShareImage(message);
     if (!isRegularImage && !isXiaohongshuShareImage) continue;
     if (isRegularImage && !message.mediaUrl && !message.mediaData?.imageGenerationMediaRef) continue;
+    if (isRegularImage && isAlbumFavoriteMessage(message)) continue;
     if (isOlderThan(message.createdAt, CLEAN_AFTER_MS, nowMs)) {
       result.freedBytes += isXiaohongshuShareImage
         ? await cleanChatXiaohongshuShareImage(message, nowIso).catch(() => 0)
@@ -354,7 +380,7 @@ async function runChatImageMaintenance(result: MediaMaintenanceResult, nowMs: nu
     if (!message.mediaData?.mediaCompressedAt && isOlderThan(message.createdAt, COMPRESS_AFTER_MS, nowMs)) {
       const compacted = isXiaohongshuShareImage
         ? await compactChatXiaohongshuShareImage(message, nowIso).catch(() => ({ changed: false, freedBytes: 0 }))
-        : await compactChatImage(message, nowIso).catch(() => ({ changed: false, freedBytes: 0 }));
+        : await compactChatImage(message, nowIso, (albumByMessage ??= albumAssetsByMessage()).get(message.id)).catch(() => ({ changed: false, freedBytes: 0 }));
       result.freedBytes += compacted.freedBytes;
       if (compacted.changed) result.chatImagesCompressed += 1;
     }

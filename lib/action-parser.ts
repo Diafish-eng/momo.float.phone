@@ -40,7 +40,8 @@ export type ActionContext = {
 
 // ── Parser ──
 
-const ACTION_TAGS = ["朋友圈", "群消息", "评论", "回复", "消息", "私信"] as const;
+// 相册动作要排在「评论」前面，否则 [相册评论] 会被当成朋友圈 [评论]
+const ACTION_TAGS = ["相册转发", "相册头像", "相册评论", "朋友圈", "群消息", "评论", "回复", "消息", "私信"] as const;
 
 function normalizeActionQuotes(text: string): string {
     return text.replace(/[\u201C\u201D\u2018\u2019\u300C\u300D]/g, "\"");
@@ -178,7 +179,7 @@ export function parseActionTags(text: string): {
  */
 const KNOWN_ACTION_TAGS = [
     // 中文方括号格式
-    "朋友圈", "评论", "回复", "消息", "群消息", "私信",
+    "相册转发", "相册头像", "相册评论", "朋友圈", "评论", "回复", "消息", "群消息", "私信",
     // XML 格式 (AI 偶尔幻觉输出)
     "action_chat_message", "action_moments_post",
     "action_comment", "action_reply",
@@ -229,6 +230,23 @@ export async function dispatchActions(
             if (!effectiveCtx) { console.log("[ActionParser]", `SKIP: actor "${action.actor}" not found`); continue; }
             console.log("[ActionParser]", `dispatching: type=${action.type} charId=${effectiveCtx.characterId}`);
             switch (action.type) {
+                case "相册转发":
+                case "相册头像":
+                case "相册评论": {
+                    // 共享相册动作：不能借别人的名义动用别人的相册权限
+                    if (effectiveCtx.characterId !== context.characterId) {
+                        const group = loadChatSessions().find(s => s.id === context.sessionId && s.isGroup);
+                        if (context.sourceEngine !== "group_chat" || !group?.participantIds?.includes(effectiveCtx.characterId)) break;
+                    }
+                    const boundary = action.target?.lastIndexOf("|") ?? -1;
+                    if (boundary < 1) break; // 只有照片 ID、没有版本号时不执行，防止对替换后的照片动手
+                    const assetId = action.target!.slice(0, boundary);
+                    const version = action.target!.slice(boundary + 1);
+                    if (!version) break;
+                    const { executeAlbumAction } = await import("./photo-album-actions");
+                    await executeAlbumAction(effectiveCtx.characterId, assetId, action.type === "相册转发" ? "forward" : action.type === "相册头像" ? "avatar" : "comment", action.content, version, context.signal);
+                    break;
+                }
                 case "朋友圈":
                     await dispatchMomentsPost(action, effectiveCtx);
                     break;

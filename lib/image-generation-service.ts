@@ -748,6 +748,10 @@ export async function generateImageFromConfiguredApi(params: {
   useReferenceImage?: boolean;
   settings?: ImageGenerationSettings;
   signal?: AbortSignal;
+  /** 共享相册生图：用户自己上传的参考图（OpenAI 兼容模式）；给了就优先用它，不再取角色参考图 */
+  referenceImageDataUrl?: string;
+  /** false = 只返回结果、不存进媒体库（相册预览先不落盘，用户点保存才存）。默认 true，其它调用不受影响 */
+  persistResult?: boolean;
 }): Promise<ImageGenerationResult | null> {
   const storedSettings = params.settings ?? loadImageGenerationSettings();
   // 显式传入 settings 的配置测试/工具调用保持原样；正常业务调用才读取绑定。
@@ -793,7 +797,7 @@ export async function generateImageFromConfiguredApi(params: {
     const mimeType = data.mimeType || "image/png";
     const blob = base64ToBlob(data.b64, mimeType);
     throwIfAborted(params.signal);
-    const mediaRef = await storeMediaBlob(blob, mimeType, "image");
+    const mediaRef = params.persistResult === false ? "" : await storeMediaBlob(blob, mimeType, "image");
     throwIfAborted(params.signal);
     return {
       mediaRef,
@@ -819,12 +823,11 @@ export async function generateImageFromConfiguredApi(params: {
     && reference?.assetId
     && reference.enabled !== false,
   );
-  const rawReferenceImageDataUrl = shouldUseReference && reference?.assetId
-    ? await getChatImageFromIndexedDB(reference.assetId)
-    : null;
+  const rawReferenceImageDataUrl = params.referenceImageDataUrl
+    || (shouldUseReference && reference?.assetId ? await getChatImageFromIndexedDB(reference.assetId) : null);
   throwIfAborted(params.signal);
   const referenceImageDataUrl = rawReferenceImageDataUrl
-    ? await normalizeReferenceImageForEdit(rawReferenceImageDataUrl, reference?.faceCrop)
+    ? await normalizeReferenceImageForEdit(rawReferenceImageDataUrl, params.referenceImageDataUrl ? undefined : reference?.faceCrop)
     : null;
   throwIfAborted(params.signal);
   const characterPrompt = reference?.featurePrompt?.trim() || "";
@@ -841,7 +844,7 @@ export async function generateImageFromConfiguredApi(params: {
   const mimeType = data.mimeType || "image/png";
   const blob = base64ToBlob(data.b64, mimeType);
   throwIfAborted(params.signal);
-  const mediaRef = await storeMediaBlob(blob, mimeType, "image");
+  const mediaRef = params.persistResult === false ? "" : await storeMediaBlob(blob, mimeType, "image");
   throwIfAborted(params.signal);
   return {
     mediaRef,

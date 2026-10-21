@@ -758,6 +758,7 @@ function normalizeImageGenerationSettings(settings: Partial<ImageGenerationSetti
             featurePrompt: typeof rawRef.featurePrompt === "string" ? rawRef.featurePrompt : "",
             enabled: rawRef.enabled !== false,
             selfieOnly: rawRef.selfieOnly !== false,
+            novelAiFeaturePromptEnabled: rawRef.novelAiFeaturePromptEnabled !== false,
             faceCrop: crop && typeof crop.x === "number" && typeof crop.y === "number"
                 ? {
                     x: Math.max(0, Math.min(1, crop.x)),

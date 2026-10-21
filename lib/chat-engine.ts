@@ -292,7 +292,11 @@ export async function prepareVisionPromptImageMessage(msg: ChatMessage): Promise
     if (!isVisionPromptImageMessage(msg) || !msg.mediaUrl) return;
     const result = await resolveVisionImageRefForApi(msg.mediaUrl);
     if ("url" in result) {
-        msg.mediaUrl = result.url;
+        // 相册转发来的照片带涂鸦时，把涂鸦画进图里再给模型看（没有涂鸦的照片完全照旧）
+        const annotations = msg.mediaData?.photoAnnotations;
+        msg.mediaUrl = annotations?.length
+            ? await import("./chat-photo-markup").then(m => m.compositePhotoAnnotations(result.url, annotations)).catch(() => null) || result.url
+            : result.url;
     } else if ("drop" in result) {
         msg.mediaUrl = undefined;
     }

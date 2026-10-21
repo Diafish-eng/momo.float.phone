@@ -42,6 +42,7 @@ import {
     resolvePromptTimeAware,
     type PromptTimestampOptions,
 } from "./prompt-time";
+import { albumDiscussionMemory } from "./photo-album-discussion";
 
 function formatPhotoDirectiveForPrompt(msg: ChatMessage): string {
     const description = msg.mediaData?.label?.trim() || "图片";
@@ -51,7 +52,7 @@ function formatPhotoDirectiveForPrompt(msg: ChatMessage): string {
 
 export type NativeTimelineEntry = {
     id: string;
-    sourceApp: "chat" | "moments" | "story" | "vn" | "map" | "game" | "diary" | "xiaohongshu" | "interview_magazine" | "cocreate" | "checkphone" | "custom_app";
+    sourceApp: "chat" | "moments" | "story" | "vn" | "map" | "game" | "diary" | "xiaohongshu" | "interview_magazine" | "cocreate" | "checkphone" | "custom_app" | "album";
     sourceDetail?: "direct" | "group" | "system" | "story" | "chat_offline" | "game" | "diary_entry" | "notewall" | "xiaohongshu" | "black_market_theater" | "interview_issue" | "interview_shared_issue" | "cocreate_project" | "checkphone" | "custom_app_event"; // chat sub-type: 1:1 vs group chat vs system note
     authorType?: "user" | "character" | "npc"; // who authored this entry
     postAuthorType?: "user" | "character"; // for moments: who owns the parent post
@@ -789,6 +790,13 @@ export function loadNativeTimeline(
         });
     }
 
+    // 共享相册：角色自己的心语/评论、看过的照片、做过的相册动作（出错不影响聊天）
+    try {
+        entries.push(...albumDiscussionMemory(characterId)
+            .filter(e => !options?.afterTimestamp || e.timestamp > options.afterTimestamp)
+            .map(e => ({ ...e, sourceApp: "album" as const })));
+    } catch { /* ignore */ }
+
     // Sort by timestamp ascending
     entries.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
     return entries;
@@ -1039,6 +1047,8 @@ export function prepareShortTermContext(
         raw.push({ tag: "recent_cocreate", order: FEATURE_ORDER.cocreate, entries: cocreateEntries });
     }
 
+    const albumEntries = timeline.filter(e => e.sourceApp === "album");
+    if (albumEntries.length > 0) raw.push({ tag: "recent_album", order: 2.7, entries: albumEntries });
     const customAppEntries = timeline.filter(e => e.sourceApp === "custom_app");
     if (customAppEntries.length > 0) {
         raw.push({ tag: "recent_custom_app", order: FEATURE_ORDER.custom_app, entries: customAppEntries });
@@ -1215,6 +1225,8 @@ export function prepareGroupShortTermContext(
         });
         timeline = filterTimelineByAllowedSources(timeline, allowed);
         for (const entry of timeline) {
+            // 群聊只看本群的相册资料（另外注入）；成员私聊/私人专辑里的相册内容不能进群聊提示词
+            if (entry.sourceApp === "album") continue;
             if (entry.sourceApp === "chat" && entry.sourceDetail === "group" && entry.groupSessionId === options?.excludeGroupSessionId) {
                 continue;
             }
@@ -1297,6 +1309,8 @@ export function prepareGroupShortTermContext(
         raw.push({ tag: "recent_cocreate", order: FEATURE_ORDER.cocreate, entries: cocreateEntries });
     }
 
+    const albumEntries = timeline.filter(e => e.sourceApp === "album");
+    if (albumEntries.length > 0) raw.push({ tag: "recent_album", order: 2.7, entries: albumEntries });
     const customAppEntries = timeline.filter(e => e.sourceApp === "custom_app");
     if (customAppEntries.length > 0) {
         raw.push({ tag: "recent_custom_app", order: FEATURE_ORDER.custom_app, entries: customAppEntries });
@@ -1396,6 +1410,7 @@ export function prepareGroupShortTermContext(
                                         entry.sourceApp === "interview_magazine" ? "recent_interview" :
                                                 entry.sourceApp === "cocreate" ? "recent_cocreate" :
                                                     entry.sourceApp === "custom_app" ? "recent_custom_app" :
+                                                    entry.sourceApp === "album" ? "recent_album" :
                                                         entry.sourceApp === "story" && entry.sourceDetail === "black_market_theater" ? "recent_theater" :
                                                             entry.sourceApp === "diary" && entry.sourceDetail === "diary_entry" ? "recent_diary" :
                                                                 entry.sourceApp === "diary" && entry.sourceDetail === "notewall" ? "recent_notewall" :

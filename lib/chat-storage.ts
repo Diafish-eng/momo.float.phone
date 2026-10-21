@@ -101,6 +101,38 @@ export type ChatMessageStatus = "sending" | "sent" | "read" | "failed" | "reject
 export type ChatMessageRole = "user" | "assistant" | "system" | "tool";
 
 export type StateValue = { name: string; value: number };
+
+/** 照片上的涂鸦/标记（共享相册用，移植自 float-Yyk）。坐标都是 0..1 的相对位置。 */
+export type ChatPhotoAnnotation = {
+    id: string;
+    kind: "stroke" | "text" | "rough_shape" | "emoji";
+    color: string;
+    width?: number;
+    /** 0..1 normalized coordinates stored as x/y pairs. */
+    points?: number[];
+    x?: number;
+    y?: number;
+    text?: string;
+    shape?: "heart" | "star" | "circle" | "arrow" | "box" | "underline";
+    doodlePath?: string;
+    fill?: string;
+    opacity?: number;
+    compositionId?: string;
+    emoji?: string;
+    scale?: number;
+    rotation?: number;
+    seed?: number;
+    roughness?: number;
+    bowing?: number;
+    size?: number;
+    /** Optional human/model description of what this mark represents. */
+    description?: string;
+    actorId?: string;
+    actorName?: string;
+    createdAt?: string;
+    /** AI/vector marks use an intentionally imperfect double-stroked rendering. */
+    renderStyle?: "handdrawn";
+};
 export type NativeToolCallRecord = { id: string; name: string; args: Record<string, unknown>; thoughtSignature?: string };
 export type NativeToolResultRecord = { toolCallId: string; name: string; content: string };
 
@@ -145,6 +177,14 @@ export type ChatMessage = {
         amount?: number;          // 红包/转账金额
         count?: number;           // 红包个数
         label?: string;           // 红包留言/转账备注/照片描述/位置名/表情名
+        // ── 共享相册 ──
+        photoKind?: "photo" | "text_photo";
+        /** 照片上的涂鸦（相册转发时带上）；聊天里显示原图时叠加绘制 */
+        photoAnnotations?: ChatPhotoAnnotation[];
+        /** 从相册转发出来的照片的出处，不代表访问权限 */
+        albumPhotoId?: string;
+        albumContentVersion?: string;
+        albumVariantVersion?: string;
         status?: "pending" | "opened" | "received" | "declined" | "paid" | "canceled";  // 红包/转账/代付状态
         quoteMessageId?: string;  // 引用消息 ID
         quotePreview?: string;    // 引用消息预览文本
@@ -1327,6 +1367,14 @@ export function removeChatContact(characterId: string) {
  */
 export function peekChatSessions(): ChatSession[] {
     return _sessionsCache;
+}
+
+/**
+ * 只读遍历内存里的全部消息（不排序、不复制），给需要「扫一遍全部聊天」的功能用，
+ * 比逐个会话 loadChatMessages（每次都过滤+排序全部消息）快得多。回调里不要修改消息。
+ */
+export function forEachChatMessage(fn: (message: Readonly<ChatMessage>) => void): void {
+    for (const message of _messagesCache) fn(message);
 }
 
 export function loadChatSessions(): ChatSession[] {

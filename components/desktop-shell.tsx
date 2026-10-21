@@ -39,6 +39,7 @@ import { CheckPhoneApp } from "@/components/checkphone/checkphone-app";
 import { ShoppingApp } from "@/components/shopping/shopping-app";
 import { GameHubApp } from "@/components/game/game-hub-app";
 import { MixologyApp } from "@/components/mixology/mixology-app";
+import dynamic from "next/dynamic";
 import InterviewMagazineApp from "@/components/interview/interview-magazine-app";
 import { CoCreateApp } from "@/components/cocreate/cocreate-app";
 import { AppMarketApp } from "@/components/app-market/app-market-app";
@@ -146,6 +147,13 @@ import type { ChatSharePayload } from "@/lib/chat-share";
 import { completePendingMcpOAuthCallback } from "@/lib/tool-executor";
 import { isSkinPackCss, setSkinPackSource } from "@/lib/skin-pack";
 import { LayoutGrid, LoaderCircle, RefreshCw } from "lucide-react";
+
+// 共享相册（移植自 float-Yyk）：点开时才加载，不拖慢 Float 启动
+const loadPhotoAlbumApp = () => import("@/components/photo-album/photo-album-app");
+const PhotoAlbumApp = dynamic(() => loadPhotoAlbumApp().then(m => m.PhotoAlbumApp), {
+  ssr: false,
+  loading: () => <section className="photo-album-app"><div className="photo-album-loading" aria-label="正在打开相册" /></section>,
+});
 
 const EMOJI_FONTS = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla"';
 
@@ -1844,6 +1852,8 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
     let cancelled = false;
     let servicesStarted = false;
     let cleanupWeixinCloudRealtimeSync: (() => void) | null = null;
+    let stopAlbumReview: (() => void) | null = null;
+    let albumPrefetchTimer: number | undefined;
 
     void (async () => {
       try {
@@ -1892,11 +1902,21 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
       void import("@/lib/push-bridge-sync").then(m => m.installBridgeServerSync()).catch(() => undefined);
       // 定时唤醒/经期关怀兜底：切后台时刷新快照预约
       void import("@/lib/push-bailout-client").then(m => m.installScheduledBailoutRefresher()).catch(() => undefined);
+      // 共享相册后台（角色心语/评论回复）：打字、AI 回复中、切后台时自动让路
+      void import("@/lib/photo-album-review").then(m => {
+        if (cancelled) return;
+        m.startAlbumReviewService();
+        stopAlbumReview = m.stopAlbumReviewService;
+      }).catch(() => undefined);
+      // 空闲时预取相册界面代码，点开相册时不用等下载
+      albumPrefetchTimer = window.setTimeout(() => { void loadPhotoAlbumApp().catch(() => undefined); }, 8_000);
     })();
 
     return () => {
       cancelled = true;
       cleanupWeixinCloudRealtimeSync?.();
+      stopAlbumReview?.();
+      if (albumPrefetchTimer !== undefined) window.clearTimeout(albumPrefetchTimer);
       if (servicesStarted) {
         stopFollowUpService();
         stopMomentsService();
@@ -4186,6 +4206,10 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
 
     if (activeApp === "mixology") {
       return <MixologyApp onClose={() => setActiveApp(null)} />;
+    }
+
+    if (activeApp === "photos") {
+      return <PhotoAlbumApp onClose={() => setActiveApp(null)} />;
     }
 
     if (activeApp === "appmarket") {

@@ -83,6 +83,7 @@ import type { DebugPromptSnapshot } from "./debug-store";
 import { throwIfAborted } from "./abort-utils";
 import { buildCharacterTimeContext, buildGroupTimeContext } from "./character-time";
 import { getPromptTimestampOptionsForTimeContext } from "./prompt-time";
+import { groupAlbumContext } from "./photo-album-discussion";
 
 function stripGroupFinancialActionsForMetadataRepair(text: string): string {
     return stripStateAndInnerForPrompt(text)
@@ -493,6 +494,12 @@ async function buildGroupChatPromptMessages(
         offlineSummaryTag: preset?.story_summary_tag?.trim() || "summary",
         nativeToolHistory: usesNativeActions,
     });
+    // 共享相册：只给本群的照片资料（成员各自的私聊/私人专辑不会进群聊）
+    if (promptProfile?.output !== "plain_text" && promptProfile?.output !== "json") {
+        let sharedAlbumContext = "";
+        try { sharedAlbumContext = groupAlbumContext(session.id); } catch { /* 相册出错不能影响群聊 */ }
+        if (sharedAlbumContext) llmMessages.push({ role: "system", content: sharedAlbumContext });
+    }
     if (promptProfile?.output === "plain_text") {
         llmMessages.push({
             role: "system",

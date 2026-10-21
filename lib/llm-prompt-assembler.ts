@@ -18,6 +18,8 @@ import { buildCharacterTimeContext, buildGroupTimeContext, type CharacterTimeCon
 import { formatShoppingPaymentRequestHistory } from "./shopping-payment-request";
 import { buildGroupAdminBracketText } from "./group-admin";
 import { isStaleCharacterStickerLabel } from "./sticker-data";
+import { describePhotoAnnotations } from "./chat-photo-markup";
+import { albumChatContext } from "./photo-album-discussion";
 
 export type LLMMessageRole = "system" | "user" | "assistant" | "tool";
 export type LLMToolCallPayload = { id: string; name: string; args: Record<string, unknown>; thoughtSignature?: string };
@@ -178,7 +180,10 @@ function formatPhotoDirective(msg: ChatMessage, prefix = ""): string {
     }
     const description = msg.mediaData?.label?.trim() || "图片";
     const mode = msg.mediaData?.useReferenceImage === true ? "使用参考图" : "不使用参考图";
-    return `${prefix}[照片:${mode}:${description}]`;
+    const marks = msg.mediaData?.photoAnnotations?.length
+        ? `\n[照片现有标记:${describePhotoAnnotations(msg.mediaData.photoAnnotations)}]`
+        : "";
+    return `${prefix}[照片:${mode}:${description}]${marks}`;
 }
 
 function formatImageGenerationDirective(msg: ChatMessage, prefix = ""): string {
@@ -1136,6 +1141,13 @@ export function assemblePromptPayload(input: AssemblerInput): LLMMessage[] {
             };
             finalPayload.splice(i, 1);
         }
+    }
+
+    // 共享相册：私聊时让角色知道相册里最近的心语/评论和你确认过的共同经历（没有相关照片时不加任何内容）
+    if (appId === "chat") {
+        let albumContext = "";
+        try { albumContext = albumChatContext(character.id); } catch { /* 相册出错不能影响聊天 */ }
+        if (albumContext) finalPayload.push({ role: "system", content: albumContext, _debugMeta: { marker: "shared_album_context" } });
     }
 
     return finalPayload;

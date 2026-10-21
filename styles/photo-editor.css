@@ -1,0 +1,36 @@
+.photo-edit-page,.chat-photo-group-overlay{background:var(--c-page-body-bg,#f7f8fa);color:var(--c-text,#202124)}
+.photo-edit-page{position:fixed;inset:0;z-index:10080;height:100dvh;display:flex;flex-direction:column;isolation:isolate;overscroll-behavior:none}
+.photo-edit-header{flex:none;display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 14px) 20px 12px;z-index:3}
+.photo-glass-button{width:44px;height:44px;display:grid;place-items:center;flex:none;border-radius:50%;border:1px solid color-mix(in srgb,var(--c-text,#202124) 8%,transparent);background:color-mix(in srgb,var(--c-page-body-bg,#fff) 65%,transparent);color:var(--c-text,#202124);box-shadow:0 3px 14px #00000009,inset 0 1px 1px #ffffff50;backdrop-filter:blur(18px) saturate(140%);cursor:pointer;padding:0}
+.photo-glass-button svg{width:23px;height:23px;stroke-width:1.8}
+.photo-edit-workspace{min-height:0;flex:1;display:flex;align-items:center;justify-content:center;padding:12px 24px;overflow:hidden}
+.photo-edit-stage{position:relative;width:fit-content;height:fit-content;max-width:100%;max-height:100%;line-height:0;touch-action:none}
+.photo-edit-stage>img{display:block;width:auto;height:auto;max-width:100%;max-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 244px);object-fit:contain;border-radius:12px;user-select:none;-webkit-user-select:none}
+.photo-edit-text{width:min(76vw,440px);height:min(50dvh,540px);display:grid;place-items:center;text-align:center;white-space:pre-wrap;padding:24px;line-height:1.6;background:color-mix(in srgb,var(--c-text) 5%,var(--c-page-body-bg));border-radius:16px}
+.photo-edit-touch{position:absolute;inset:0;touch-action:none;user-select:none;-webkit-user-select:none}
+.photo-edit-footer{flex:none;display:flex;align-items:center;flex-direction:column;justify-content:flex-end;gap:16px;min-height:116px;padding:8px 12px calc(env(safe-area-inset-bottom,0px) + 16px)}
+.photo-pen-options{display:flex;align-items:center;justify-content:center;gap:7px;max-width:100%}
+.photo-pen-options button{cursor:pointer;flex:none}
+.photo-color-dot{width:23px;height:23px;border-radius:50%;border:1px solid #8885;padding:0}
+.photo-color-dot[aria-pressed=true]{outline:2px solid #0a84ff;outline-offset:3px}
+.photo-tool-separator{width:1px;height:20px;background:#8884;margin:0 3px}
+.photo-pen-width,.photo-undo{border:0;background:transparent;color:inherit;display:grid;place-items:center;width:28px;height:32px;padding:0;border-radius:10px}
+.photo-pen-width i{background:currentColor;display:block;border-radius:50%}
+.photo-pen-width[aria-pressed=true]{background:color-mix(in srgb,#0a84ff 14%,transparent);color:#0a84ff}
+.photo-tool-capsule{display:flex;padding:5px;border-radius:28px;background:color-mix(in srgb,var(--c-text) 6%,transparent);border:1px solid #8882;touch-action:pan-y}
+.photo-tool-capsule button{display:flex;align-items:center;justify-content:center;gap:8px;min-width:106px;height:40px;border:0;border-radius:24px;background:transparent;color:inherit;font-size:14px;cursor:pointer}
+.photo-tool-capsule button[aria-pressed=true]{background:var(--c-page-body-bg,#fff);box-shadow:0 2px 8px #00000012}
+.photo-emoji-input-overlay{position:absolute;inset:84px 0 132px;z-index:2;display:grid;place-items:center}
+.photo-emoji-native-input{width:76px;height:76px;padding:5px;text-align:center;font-size:42px;line-height:1.2;border:1px solid #8884;border-radius:22px;background:var(--c-page-body-bg,#fff);color:var(--c-text);box-shadow:0 8px 32px #00000012;outline:none}
+.chat-photo-group-overlay{padding:calc(env(safe-area-inset-top,0px) + 88px) 20px calc(env(safe-area-inset-bottom,0px) + 24px);overscroll-behavior:contain}
+.chat-photo-group-header{height:auto;min-height:80px;padding:calc(env(safe-area-inset-top,0px) + 14px) 20px 12px;display:grid;grid-template-columns:44px 1fr 44px;background:color-mix(in srgb,var(--c-page-body-bg,#fff) 85%,transparent)}
+.chat-photo-group-grid{gap:14px;max-width:600px}
+.chat-photo-group-grid>button{background:color-mix(in srgb,var(--c-text) 4%,transparent);border-radius:16px}
+.chat-photo-group-grid img{object-fit:contain}
+.chat-photo-stack-count{border:0;background:none;padding:0;cursor:pointer;z-index:30}
+.photo-front-reaction{position:absolute;inset:0;z-index:25;pointer-events:none}
+.photo-front-reaction .imessage-tapback-badge{pointer-events:auto;left:auto;right:-12px}
+.photo-front-reaction[data-message-role="user"] .imessage-tapback-badge{left:-12px;right:auto}
+.photo-front-reaction[data-message-role="user"] .imessage-tapback-shape{transform:scaleX(-1);transform-origin:center}
+.photo-front-reaction[data-message-role="user"] .imessage-tapback-glyph{left:53.55%}
+@media(max-width:360px){.photo-pen-options{gap:4px}.photo-color-dot{width:20px;height:20px}.photo-pen-width{width:24px}}

@@ -253,6 +253,8 @@ export type ImageGenerationSettings = {
         enabled?: boolean;
         /** 开启时，仅自拍语义的图片使用参考图，默认开启。 */
         selfieOnly?: boolean;
+        /** NovelAI 生图时是否追加角色固定外观特征，默认开启。 */
+        novelAiFeaturePromptEnabled?: boolean;
         /** 归一化的正方形脸部选区。 */
         faceCrop?: {
             x: number;

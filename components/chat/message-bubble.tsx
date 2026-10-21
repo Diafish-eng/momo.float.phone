@@ -33,6 +33,13 @@ import { toCustomAppIconId } from "@/lib/custom-app-types";
 import { ChatPluginSlot } from "@/components/chat/chat-plugin-slot";
 import { CustomStatusFrame } from "@/components/chat/custom-status-frame";
 import { CHAT_PLUGIN_SLOTS_CHANGED_EVENT, getChatPluginRuntime } from "@/lib/chat-plugin-runtime";
+import dynamic from "next/dynamic";
+
+// 相册转发来的照片带涂鸦时才加载画图层（不带涂鸦的普通照片完全不受影响）
+const PhotoAnnotationOverlay = dynamic(
+    () => import("@/components/photo-album/photo-album-annotation-layer").then(m => m.PhotoAlbumAnnotationLayer),
+    { ssr: false },
+);
 
 interface MessageBubbleProps {
     msg: ChatMessage;
@@ -151,6 +158,7 @@ export const MessageBubble = memo(function MessageBubble({ msg, onUpdate, charNa
         if (prev.msg.isTyping !== next.msg.isTyping) return false;
         if (prev.msg.mediaData?.status !== next.msg.mediaData?.status) return false;
         if (prev.msg.mediaData?.label !== next.msg.mediaData?.label) return false;
+        if (prev.msg.mediaData?.photoAnnotations !== next.msg.mediaData?.photoAnnotations) return false;
         if (prev.msg.mediaData?.claimedBy?.length !== next.msg.mediaData?.claimedBy?.length) return false;
         if (prev.msg.mediaData?.appName !== next.msg.mediaData?.appName) return false;
         if (prev.msg.mediaData?.appCardTitle !== next.msg.mediaData?.appCardTitle) return false;
@@ -1441,7 +1449,7 @@ function ImageBubble({
             <>
                 <div
                     className="chat-photo-card chat-photo-card--image rounded-none"
-                    style={{ cursor: "pointer" }}
+                    style={d?.photoAnnotations?.length ? { cursor: "pointer", position: "relative" } : { cursor: "pointer" }}
                     onClick={e => { e.stopPropagation(); setShowPreview(true); }}
                 >
                     <img
@@ -1449,6 +1457,7 @@ function ImageBubble({
                         alt={label}
                         className="chat-photo-card-image block max-w-[240px] max-h-[320px] w-auto h-auto"
                     />
+                    {d?.photoAnnotations?.length ? <PhotoAnnotationOverlay annotations={d.photoAnnotations} /> : null}
                 </div>
                 {previewAndDialog}
             </>
