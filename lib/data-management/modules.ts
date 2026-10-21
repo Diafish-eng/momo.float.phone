@@ -63,9 +63,12 @@ const PRIMARY_DATA_MODULES: DataModuleDefinition[] = [
           "ai_phone_album_core_v1",
           "ai_phone_album_auto_review_v1",
           "ai_phone_album_avatar_backup_v1",
+          // 角色真实情绪
+          "ai_phone_emotion_settings_v1",
         ],
         prefixes: [
           "ai_phone_album_discussion_v2:",
+          "ai_phone_emotion_state_v1:",
           "chat-generating:",
           "pending_reply_",
           "ai_phone_chat_offline_turns:",

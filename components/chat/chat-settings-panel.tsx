@@ -51,12 +51,13 @@ import { getSchemes, saveScheme, deleteScheme, type CSSScheme } from "@/lib/css-
 import { CustomStatusFrame } from "@/components/chat/custom-status-frame";
 import { KeyboardAutoSendDebounceItem } from "@/components/chat/keyboard-auto-send-debounce-item";
 import { SessionChatSoundsSection } from "@/components/chat/session-chat-sounds";
-import { ChevronRight, Image as ImageIcon, Video, Mic, UserMinus, UserPlus, Users, Pin, Ban, MessageSquare, Search, AlertCircle, Code, Laptop, Trash2, Smile, Sparkles, X, Play, Upload, Download, Save, FolderOpen, Camera, RefreshCw, type LucideIcon } from "lucide-react";
+import { ChevronRight, Image as ImageIcon, Video, Mic, UserMinus, UserPlus, Users, Pin, Ban, HeartPulse, MessageSquare, Search, AlertCircle, Code, Laptop, Trash2, Smile, Sparkles, X, Play, Upload, Download, Save, FolderOpen, Camera, RefreshCw, type LucideIcon } from "lucide-react";
 import { BINDING_ACCENTS, CONTENT_APP_ACCENTS } from "@/lib/ui-accent-colors";
 import CSSSchemeBar from "@/components/ui/css-scheme-picker";
 import { ConfirmDialog } from "@/components/ui/modal";
 import { CHAT_SESSION_CSS_EXAMPLE } from "@/lib/css-examples";
 import { Toggle, Input } from "@/components/ui/form";
+import { isEmotionEngineEnabled, resetEmotionState, setEmotionEngineEnabled } from "@/lib/emotion-engine";
 import { PageShell } from "@/components/ui/page-shell";
 
 // 自定义状态栏预填模板：微博主页（契约=「状态栏」章节整段正文，含【逻辑】【格式】与包裹要求）
@@ -333,6 +334,8 @@ export function ChatSettingsPanel({
     const [isPinned, setIsPinned] = useState(session.isPinned || false);
     // 仿真拉黑：拉黑期间用户发出的消息会被对方拒收（仿微信红色感叹号）
     const [isBlacklisted, setIsBlacklisted] = useState(session.isBlacklisted || false);
+    const [emotionEnabled, setEmotionEnabled] = useState(() => !session.isGroup && isEmotionEngineEnabled(session.contactId));
+    const [emotionResetDone, setEmotionResetDone] = useState(false);
     // 自定义状态栏（状态区）
     const [statusRegion, setStatusRegion] = useState<StatusRegionConfig>(() => getStatusRegionConfig(session.id, !session.isGroup));
     const [statusUsesGlobal, setStatusUsesGlobal] = useState(() => !session.isGroup && !hasOwnStatusRegionConfig(session.id));
@@ -1303,6 +1306,31 @@ export function ChatSettingsPanel({
                             </div>
                             <div className="menu-right">
                                 <Toggle checked={isBlacklisted} onChange={handleToggleBlacklist} />
+                            </div>
+                        </div>
+                    )}
+                    {/* 角色真实情绪：仅私聊；不显示任何心情，只有开关和重置 */}
+                    {!session.isGroup && (
+                        <div className="menu-item">
+                            <ChatInfoIcon icon={HeartPulse} color="#e5484d" />
+                            <div className="menu-label-group">
+                                <span className="menu-label">真实情绪</span>
+                                <span className="menu-desc">后台推演 TA 此刻的情绪，会开心、委屈、吃醋、生气甚至和你吵架；界面不显示任何心情。每次回复多一次小调用</span>
+                            </div>
+                            <div className="menu-right gap-2">
+                                {emotionEnabled && (
+                                    <button
+                                        type="button"
+                                        className="ui-btn ui-btn-ghost h-8 px-2"
+                                        disabled={emotionResetDone}
+                                        onClick={() => {
+                                            resetEmotionState(session.contactId);
+                                            setEmotionResetDone(true);
+                                            window.setTimeout(() => setEmotionResetDone(false), 2000);
+                                        }}
+                                    >{emotionResetDone ? "已重置" : "重置"}</button>
+                                )}
+                                <Toggle checked={emotionEnabled} onChange={c => { setEmotionEnabled(c); setEmotionEngineEnabled(session.contactId, c); }} />
                             </div>
                         </div>
                     )}

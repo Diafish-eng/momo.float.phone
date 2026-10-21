@@ -74,6 +74,7 @@ import { loadAllTracks } from "./music-storage";
 import { getActiveAppTags } from "./content-tag-utils";
 import { isNeteaseConfigured, getUserPlaylists, getPlaylistTracks, checkLoginStatus, loadMusicApiConfig } from "./music-service";
 import { buildCalendarScheduleMarker, getCurrentCalendarScheduleForPrompt } from "./calendar-storage";
+import { awaitEmotionState, buildEmotionDirective, ensureEmotionAppraisal, isEmotionEngineEnabled, loadEmotionState, EMOTION_APPRAISAL_MAX_WAIT_MS } from "./emotion-engine";
 import { getWeekStartIso } from "./calendar-utils";
 import { buildCharacterTimeContext } from "./character-time";
 import { getPromptTimestampOptionsForTimeContext } from "./prompt-time";
@@ -369,6 +370,8 @@ type ChatPromptBuildOptions = {
     activateAllWorldBooks?: boolean;
     toolsAllowed?: boolean;
     forceEnableTools?: boolean;
+    /** 只预览提示词时不发情绪推演请求（只用已有的情绪状态） */
+    skipEmotionAppraisal?: boolean;
 };
 
 function matchesPromptProfileRef(prompt: { identifier: string; name?: string }, refs: Set<string>): boolean {
@@ -1843,6 +1846,12 @@ export async function buildChatPromptMessages(
         : (activeSlot.regexIds || []).map(id => allRegexes.find(r => r.id === id)).filter(Boolean) as typeof allRegexes;
 
     const userIdentity = resolveUserIdentity(character.id, resolvedAppId);
+    // 角色真实情绪：和下面拼提示词同时进行，拼完再取结果
+    const emotionStartedAt = Date.now();
+    const emotionActive = !session.isGroup && resolvedAppId === "chat" && !promptProfile && isEmotionEngineEnabled(character.id);
+    const emotionPending = emotionActive && !options?.skipEmotionAppraisal
+        ? ensureEmotionAppraisal({ session, character, config, history, userName: userIdentity?.name || "用户" })
+        : null;
     const attachedImages = config.enableImageRecognition === true ? options?.attachedImages : undefined;
     const historyForPrompt: ChatMessage[] = attachedImages?.length
         ? [
@@ -2007,6 +2016,13 @@ export async function buildChatPromptMessages(
                 "控制标记不会展示给用户；不要解释标记，也不要把它写进代码块。",
             ].join("\n"),
         });
+    }
+    if (emotionActive) {
+        const emotionState = emotionPending
+            ? await awaitEmotionState(character.id, emotionPending, EMOTION_APPRAISAL_MAX_WAIT_MS - (Date.now() - emotionStartedAt))
+            : loadEmotionState(character.id);
+        const emotionDirective = buildEmotionDirective(character.name, userIdentity?.name || "用户", emotionState);
+        if (emotionDirective) llmMessages.push({ role: "system", content: emotionDirective });
     }
     if (promptProfile?.output === "plain_text") {
         llmMessages.push({
@@ -3008,7 +3024,7 @@ export async function previewPromptPayload(
     }
 
     // Use the SAME shared builder as generateChatCompletion
-    const { llmMessages, character, config, preset } = await buildChatPromptMessages(session, effectiveHistory, options);
+    const { llmMessages, character, config, preset } = await buildChatPromptMessages(session, effectiveHistory, { ...options, skipEmotionAppraisal: true });
 
     const apiMessages = previewMessagesForApi(config, preset, llmMessages);
 
@@ -3069,7 +3085,7 @@ export async function previewPromptRequestSnapshot(
         effectiveHistory = annotated;
     }
 
-    const { llmMessages, character, config, preset, userIdentity, toolsEnabled } = await buildChatPromptMessages(session, effectiveHistory, options);
+    const { llmMessages, character, config, preset, userIdentity, toolsEnabled } = await buildChatPromptMessages(session, effectiveHistory, { ...options, skipEmotionAppraisal: true });
     const requestMessages = toLlmRequestMessages(llmMessages);
     const enabledTools = toolsEnabled ? getEnabledTools(options?.appId ?? "chat") : [];
     const meta = { characterName: character.name, userName: userIdentity?.name };

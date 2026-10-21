@@ -63,6 +63,7 @@ import type { MemoryWriteRequest, ToolResult } from "@/lib/tool-executor";
 import { formatChatUiTime, formatChatShortTime, formatChatFullTime } from "@/lib/chat-time";
 import { setQuoteNameContext } from "@/lib/quote-name";
 import { parseActionTags } from "@/lib/action-parser";
+import { scheduleEmotionPrewarm } from "@/lib/emotion-engine";
 import { kvGet, kvSet, kvRemove } from "@/lib/kv-db";
 import { creditWalletBalance, payWithWalletBalance } from "@/lib/wallet-storage";
 import { loadDeliveredShoppingGifts, type ShoppingGiftCandidate } from "@/lib/shopping-gift-utils";
@@ -4170,6 +4171,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             // 都在消息真正写入后触发，避免回复基于旧上下文）
             // 先让刚发出的气泡画上屏，再开始组装提示词、请求模型（组装是重活，同帧做会卡一下）
             if (options?.autoReply) runAfterNextPaint(() => { void triggerAIResponse(); });
+            // 角色真实情绪：停手 2.5 秒后先在后台推演，点「回复」时多半已经算好
+            else if (!session.isGroup) scheduleEmotionPrewarm(session.id);
         };
 
         // 聊天插件织入点 user.beforeSend：无插件时走原同步路径，
