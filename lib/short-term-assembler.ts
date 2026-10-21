@@ -43,6 +43,7 @@ import {
     type PromptTimestampOptions,
 } from "./prompt-time";
 import { albumDiscussionMemory } from "./photo-album-discussion";
+import { compactCustomAppEvents, todayInTimeZone } from "./custom-app-event-compaction";
 
 function formatPhotoDirectiveForPrompt(msg: ChatMessage): string {
     const description = msg.mediaData?.label?.trim() || "图片";
@@ -770,7 +771,9 @@ export function loadNativeTimeline(
     const customAppEntries = loadCustomAppTimelineEntries(characterId, {
         afterTimestamp: options?.afterTimestamp,
     });
-    for (const customEntry of customAppEntries) {
+    // 放进提示词前先压短（旧版本日程去掉、别的日子只留标题、过长的截短），存着的原文不动
+    const characterTimeZone = chars.find(c => c.id === characterId)?.timeZone;
+    for (const { entry: customEntry, summary: compactSummary } of compactCustomAppEvents(customAppEntries, todayInTimeZone(characterTimeZone))) {
         const label = customEntry.appLabel || customEntry.appName || "APP";
         entries.push({
             id: customEntry.id,
@@ -781,7 +784,7 @@ export function loadNativeTimeline(
             customAppId: customEntry.appId,
             customAppName: customEntry.appName,
             customAppLabel: label,
-            content: formatStoredPromptEventContent(customEntry.summary, {
+            content: formatStoredPromptEventContent(compactSummary, {
                 label,
                 timestamp: customEntry.createdAt,
                 timeAware,

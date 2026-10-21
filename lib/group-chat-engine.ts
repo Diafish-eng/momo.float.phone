@@ -70,7 +70,7 @@ import { formatCoreMemories, formatLongTermMemories } from "./memory-injector";
 import { maybeRunSummarization } from "./memory-summarizer";
 import { prepareShortTermContext, prepareGroupShortTermContext } from "./short-term-assembler";
 import { parseActionTags, dispatchActions } from "./action-parser";
-import { getCustomStickerExample, loadCustomStickers } from "./custom-sticker-storage";
+import { getCustomStickerExample, selectPromptStickerNames } from "./custom-sticker-storage";
 import { formatCustomAppChatDirectivesForPrompt } from "./custom-app-chat-directives";
 import { findEnabledToolForSchema, getEnabledTools } from "./tool-storage";
 import { formatToolsForPrompt, formatGroupToolsForPrompt, formatToolSchema } from "./tool-prompt";
@@ -409,8 +409,10 @@ async function buildGroupChatPromptMessages(
         }
     }
 
+    // 每个成员只放常用 + 跟话题相关 + 轮换的一部分表情包（群聊人多，每人少放一些）
+    const stickerRecentText = promptHistory.slice(-8).map(m => `${m.content || ""} ${m.mediaData?.label || ""}`).join(" ").slice(-1500);
     const stickerRows = members.map(m => {
-        const names = loadCustomStickers(m.character.id).map(sticker => sticker.name).filter(Boolean);
+        const names = selectPromptStickerNames(m.character.id, { recentText: stickerRecentText, limit: 80 });
         return `${m.character.name}：${names.length > 0 ? names.join("，") : "无"}`;
     });
     const hasAnySticker = stickerRows.some(row => !row.endsWith("：无"));

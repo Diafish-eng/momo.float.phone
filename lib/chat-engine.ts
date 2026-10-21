@@ -354,6 +354,14 @@ export type DebugPromptRequestOptions = {
     debugSessionId?: string;
 };
 
+/** 最近几条聊天 + 角色此刻的情绪，用来挑跟话题相关的表情包 */
+function recentStickerContext(history: readonly ChatMessage[], characterId: string): string {
+    const recent = history.slice(-8).map(m => `${m.content || ""} ${m.mediaData?.label || ""}`).join(" ");
+    let emotions = "";
+    try { emotions = (loadEmotionState(characterId)?.emotions || []).map(e => e.name).join(" "); } catch { /* ignore */ }
+    return `${recent} ${emotions}`.slice(-1500);
+}
+
 type ChatPromptBuildOptions = {
     followUpCount?: number;
     followUpDelay?: number;
@@ -1956,7 +1964,7 @@ export async function buildChatPromptMessages(
         activateAllWorldBooks: options?.activateAllWorldBooks,
         recentBlocks,
         unifiedRecentItems,
-        customStickerNames: getCustomStickerNames(character.id),
+        customStickerNames: getCustomStickerNames(character.id, { recentText: recentStickerContext(historyForPrompt, character.id) }),
         customStickerExample: getCustomStickerExample(character.id),
         musicLocal,
         musicCloud,

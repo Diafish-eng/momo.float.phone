@@ -12,6 +12,7 @@ import {
     checkAnimatedAssetSize,
 } from "./theme-storage";
 import { kvGet, kvSet, registerKvMigration } from "./kv-db";
+import { forEachChatMessage, peekChatSessions } from "./chat-storage";
 
 const PACKS_KEY = "ai_phone_sticker_packs_v1";
 const ASSIGN_KEY = "ai_phone_sticker_assign_v1";
@@ -290,11 +291,126 @@ export function loadCustomStickers(characterId: string): StickerItem[] {
     return result;
 }
 
+// ── 提示词里的表情包清单：只放一部分，省 token ──
+// 表情包很多时（你的有一千多个），每次都把全部名字发给模型很费 token，而角色常用的只有几十个。
+// 所以每次只放：这个角色最常发的 + 跟最近聊天内容相关的 + 一批轮换的（每小时换一批），合计约 150 个。
+// 角色写出清单外的名字也没关系：显示时会在 TA 绑定的全部表情包里找（findCustomStickerByName）。
+// 注意：本文件加载时不能读取 chat-storage 的导出（有循环引用），只能在函数里用。
+
+const PROMPT_STICKER_LIMIT = 150;
+const PROMPT_STICKER_POPULAR = 60;
+const PROMPT_STICKER_RELEVANT = 40;
+const STICKER_USAGE_REUSE_MS = 60_000;
+
+type StickerUsage = { byCharacter: Map<string, Map<string, number>>; global: Map<string, number> };
+let stickerUsageCache: { at: number; usage: StickerUsage } | null = null;
+
+/** 一遍扫完全部消息，统计每个角色发过哪些表情包（按规范化后的名字计数），结果复用 1 分钟 */
+function getStickerUsage(): StickerUsage {
+    const now = Date.now();
+    if (stickerUsageCache && now - stickerUsageCache.at < STICKER_USAGE_REUSE_MS) return stickerUsageCache.usage;
+    const contactBySession = new Map<string, string>();
+    for (const session of peekChatSessions()) if (!session.isGroup && session.contactId) contactBySession.set(session.id, session.contactId);
+    const byCharacter = new Map<string, Map<string, number>>();
+    const global = new Map<string, number>();
+    forEachChatMessage((message) => {
+        if (message.mediaType !== "sticker" || message.role !== "assistant") return;
+        const label = normalizeStickerName(message.mediaData?.label || "");
+        if (!label) return;
+        const characterId = message.senderCharacterId || contactBySession.get(message.sessionId);
+        global.set(label, (global.get(label) || 0) + 1);
+        if (!characterId) return;
+        let counts = byCharacter.get(characterId);
+        if (!counts) { counts = new Map(); byCharacter.set(characterId, counts); }
+        counts.set(label, (counts.get(label) || 0) + 1);
+    });
+    const usage = { byCharacter, global };
+    stickerUsageCache = { at: now, usage };
+    return usage;
+}
+
+function seededRandom(seedText: string): () => number {
+    let seed = 2166136261;
+    for (let i = 0; i < seedText.length; i++) seed = Math.imul(seed ^ seedText.charCodeAt(i), 16777619);
+    return () => {
+        seed = (seed + 0x6D2B79F5) | 0;
+        let t = seed;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+/**
+ * 选出这次要放进提示词的表情包名字。表情包不多（≤150 个）时原样全部给。
+ * context.recentText：最近的聊天内容（和情绪），用来挑跟话题沾边的表情。
+ */
+export function selectPromptStickerNames(characterId: string, context?: { recentText?: string; limit?: number }): string[] {
+    const limit = context?.limit ?? PROMPT_STICKER_LIMIT;
+    const seen = new Set<string>();
+    const all: Array<{ name: string; key: string }> = [];
+    for (const sticker of loadCustomStickers(characterId)) {
+        const name = sticker.name?.trim();
+        if (!name) continue;
+        const key = normalizeStickerName(name) || name;
+        if (seen.has(key)) continue; // 不同图集里重名的只放一次
+        seen.add(key);
+        all.push({ name, key });
+    }
+    if (all.length <= limit) return all.map(item => item.name);
+
+    const picked = new Set<string>();
+    const result: string[] = [];
+    const take = (item: { name: string; key: string }) => {
+        if (result.length >= limit || picked.has(item.key)) return;
+        picked.add(item.key);
+        result.push(item.name);
+    };
+
+    // 1. 这个角色最常发的（没怎么发过就参考所有角色的常用）
+    let usage: StickerUsage | null = null;
+    try { usage = getStickerUsage(); } catch { usage = null; }
+    const own = usage?.byCharacter.get(characterId);
+    const score = (key: string) => (own?.get(key) || 0) * 1000 + (usage?.global.get(key) || 0);
+    all.filter(item => score(item.key) > 0)
+        .sort((a, b) => score(b.key) - score(a.key))
+        .slice(0, PROMPT_STICKER_POPULAR)
+        .forEach(take);
+
+    // 2. 跟最近聊天内容沾边的（名字里有两个字连着出现在最近的话里）
+    const text = normalizeStickerName(context?.recentText || "");
+    if (text.length >= 2) {
+        const bigrams = new Set<string>();
+        const chars = Array.from(text);
+        for (let i = 0; i < chars.length - 1; i++) bigrams.add(chars[i] + chars[i + 1]);
+        all.map(item => {
+            const nameChars = Array.from(item.key);
+            let hits = 0;
+            for (let i = 0; i < nameChars.length - 1; i++) if (bigrams.has(nameChars[i] + nameChars[i + 1])) hits++;
+            return { item, hits };
+        })
+            .filter(entry => entry.hits > 0 && !picked.has(entry.item.key))
+            .sort((a, b) => b.hits - a.hits)
+            .slice(0, PROMPT_STICKER_RELEVANT)
+            .forEach(entry => take(entry.item));
+    }
+
+    // 3. 其余的轮换：每小时换一批，角色迟早都能用到全部表情包
+    const random = seededRandom(`${characterId}:${Math.floor(Date.now() / 3_600_000)}`);
+    const rest = all.filter(item => !picked.has(item.key));
+    for (let i = rest.length - 1; i > 0; i--) {
+        const j = Math.floor(random() * (i + 1));
+        [rest[i], rest[j]] = [rest[j], rest[i]];
+    }
+    rest.forEach(take);
+    return result;
+}
+
 /** Get sticker names for prompt injection. */
-export function getCustomStickerNames(characterId: string): string {
-    const stickers = loadCustomStickers(characterId);
-    if (stickers.length === 0) return "无可用表情包，该功能不可用";
-    return stickers.map(s => s.name).join("，");
+export function getCustomStickerNames(characterId: string, context?: { recentText?: string }): string {
+    const names = selectPromptStickerNames(characterId, context);
+    if (names.length === 0) return "无可用表情包，该功能不可用";
+    return names.join("，");
 }
 
 /** Get first sticker formatted as [表情包:name], or empty string. */
