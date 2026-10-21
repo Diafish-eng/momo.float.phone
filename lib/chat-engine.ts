@@ -207,15 +207,84 @@ function isLikelyGifImageRef(imageRef: string): boolean {
     }
 }
 
-async function fetchRemoteImageBlob(url: string): Promise<Blob | null> {
+async function fetchRemoteImageBlob(url: string, timeoutMs = 8_000): Promise<Blob | null> {
     if (typeof fetch === "undefined") return null;
+    // 图床慢或连不上时最多等 8 秒，不能让回复一直卡着
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
     try {
-        const response = await fetch(url);
+        const response = await fetch(url, controller ? { signal: controller.signal } : undefined);
         if (!response.ok) return null;
-        return response.blob();
+        return await response.blob();
+    } catch {
+        return null;
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+}
+
+// ── 网络动图（表情包）给模型看之前要转成静态图：转好的结果存起来 ──
+// 以前每次回复都要重新下载、重新转换，大动图要 1.5–3 秒；现在同一张只在第一次慢。
+// 内存里留最近 40 张；另存一份到浏览器缓存（Cache Storage，不进备份），重开 App 也不用重下。
+const GIF_STILL_CACHE_NAME = "float-gif-still-v1";
+const GIF_STILL_MEMORY_LIMIT = 40;
+const GIF_STILL_RETRY_AFTER_MS = 10 * 60_000;
+const gifStillMemory = new Map<string, string>();
+const gifStillFailedAt = new Map<string, number>();
+const gifStillInFlight = new Map<string, Promise<string | null>>();
+
+function rememberGifStill(url: string, dataUrl: string): void {
+    gifStillMemory.delete(url);
+    gifStillMemory.set(url, dataUrl);
+    while (gifStillMemory.size > GIF_STILL_MEMORY_LIMIT) {
+        const oldest = gifStillMemory.keys().next().value;
+        if (oldest === undefined) break;
+        gifStillMemory.delete(oldest);
+    }
+}
+
+function gifStillCacheKey(url: string): string {
+    return `https://float-gif-still.local/v1?u=${encodeURIComponent(url)}`;
+}
+
+async function openGifStillCache(): Promise<Cache | null> {
+    try {
+        return typeof caches !== "undefined" ? await caches.open(GIF_STILL_CACHE_NAME) : null;
     } catch {
         return null;
     }
+}
+
+async function loadRemoteGifStill(url: string): Promise<string | null> {
+    const remembered = gifStillMemory.get(url);
+    if (remembered) { rememberGifStill(url, remembered); return remembered; }
+    const failedAt = gifStillFailedAt.get(url);
+    if (failedAt && Date.now() - failedAt < GIF_STILL_RETRY_AFTER_MS) return null;
+    const running = gifStillInFlight.get(url);
+    if (running) return running;
+    const task = (async () => {
+        const cache = await openGifStillCache();
+        try {
+            const cached = cache ? await cache.match(gifStillCacheKey(url)) : undefined;
+            if (cached) {
+                const dataUrl = await blobToDataUrl(await cached.blob());
+                rememberGifStill(url, dataUrl);
+                return dataUrl;
+            }
+        } catch { /* 缓存坏了就重新下载 */ }
+        const blob = await fetchRemoteImageBlob(url);
+        const still = blob ? await rasterizeImageBlobToJpegDataUrl(blob) : null;
+        if (!still) { gifStillFailedAt.set(url, Date.now()); return null; }
+        rememberGifStill(url, still);
+        gifStillFailedAt.delete(url);
+        try {
+            const stillBlob = dataUrlToBlob(still);
+            if (cache && stillBlob) await cache.put(gifStillCacheKey(url), new Response(stillBlob, { headers: { "Content-Type": "image/jpeg" } }));
+        } catch { /* 存不进去也不影响这次 */ }
+        return still;
+    })().finally(() => { gifStillInFlight.delete(url); });
+    gifStillInFlight.set(url, task);
+    return task;
 }
 
 export async function resolveCompressedImageDataUrl(imageRef: string): Promise<string | null> {
@@ -267,9 +336,7 @@ async function resolveVisionImageRefForApi(imageRef: string): Promise<VisionImag
     }
 
     if (isLikelyGifImageRef(imageRef)) {
-        const blob = await fetchRemoteImageBlob(imageRef);
-        if (!blob) return { drop: true };
-        const staticDataUrl = await rasterizeImageBlobToJpegDataUrl(blob);
+        const staticDataUrl = await loadRemoteGifStill(imageRef);
         return staticDataUrl ? { url: staticDataUrl } : { drop: true };
     }
 
