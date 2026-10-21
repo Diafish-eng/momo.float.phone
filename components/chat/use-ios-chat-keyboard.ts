@@ -15,6 +15,8 @@ import { useEffect } from "react";
 // - iOS 26 仍会按「聚焦那一刻输入框的位置」把页面推一下，一收到可视区变化就当场滚回 0
 //   （模拟器实测 1～2 帧内拉回）。整页本来就不该滚动、静止时永远是 0，收键盘后也顺手清掉残留偏移。
 // - 收键盘时输入栏跟着键盘一起滑下去，等键盘落下再松开整页。
+// - 消息区变矮/变高时，保持「离最后一条消息的距离」不变（和微信一样）：本来停在最底下，
+//   键盘弹出后看到的还是最后一条；往上翻在看旧消息时，看的还是那几条。
 const OPEN_ATTR = "data-ios-chat-keyboard";
 // 聊天输入框聚焦期间：整页固定住、文档不可滚动（见 styles/chat.css），iOS 就没有可推的余量
 const PIN_ATTR = "data-ios-chat-input";
@@ -57,7 +59,10 @@ export function useIosChatKeyboard() {
         const root = document.documentElement;
 
         let wrapper: HTMLElement | null = null;
+        // 最近一次聚焦的聊天室：收键盘时 wrapper 已经清空，还要靠它把消息位置对齐
+        let lastWrapper: HTMLElement | null = null;
         let appliedInset = 0;
+        let anchorRaf = 0;
         // 没有键盘时可视区的高度；用来判断键盘是不是真的出来了（外接键盘时不会出来）
         let restingHeight = viewport.height;
         let raf = 0;
@@ -75,20 +80,44 @@ export function useIosChatKeyboard() {
             if (window.scrollY !== 0 || scroller.scrollTop !== 0) window.scrollTo(0, 0);
         };
 
+        // 消息区高度变化前后，保持离底部的距离；收键盘时消息区底边有 0.3 秒过渡，跟着逐帧对齐
+        const keepBottomDistance = (change: () => void) => {
+            const scroller = (wrapper || lastWrapper)?.querySelector<HTMLElement>(":scope > .page-body");
+            if (!scroller || !scroller.isConnected) { change(); return; }
+            const distance = Math.max(0, scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight);
+            change();
+            const align = () => {
+                const target = scroller.scrollHeight - scroller.clientHeight - distance;
+                if (Math.abs(scroller.scrollTop - target) > 1) scroller.scrollTop = target;
+            };
+            align();
+            if (anchorRaf) window.cancelAnimationFrame(anchorRaf);
+            const until = performance.now() + 450;
+            const step = () => {
+                align();
+                anchorRaf = performance.now() < until ? window.requestAnimationFrame(step) : 0;
+            };
+            anchorRaf = window.requestAnimationFrame(step);
+        };
+
         const applyInset = (inset: number) => {
             const rounded = Math.max(0, Math.round(inset));
             if (rounded < MIN_KEYBOARD_PX) {
                 if (appliedInset) {
                     appliedInset = 0;
-                    root.removeAttribute(OPEN_ATTR);
-                    root.style.removeProperty(INSET_VAR);
+                    keepBottomDistance(() => {
+                        root.removeAttribute(OPEN_ATTR);
+                        root.style.removeProperty(INSET_VAR);
+                    });
                 }
                 return;
             }
             if (Math.abs(rounded - appliedInset) < 2) return;
             appliedInset = rounded;
-            root.style.setProperty(INSET_VAR, `${rounded}px`);
-            root.setAttribute(OPEN_ATTR, "");
+            keepBottomDistance(() => {
+                root.style.setProperty(INSET_VAR, `${rounded}px`);
+                root.setAttribute(OPEN_ATTR, "");
+            });
         };
 
         const anyEditableFocused = () => Boolean(document.activeElement?.closest("input, textarea, [contenteditable='true']"));
@@ -151,6 +180,7 @@ export function useIosChatKeyboard() {
                 return;
             }
             wrapper = nextWrapper;
+            lastWrapper = nextWrapper;
             closing = false;
             root.removeAttribute(CLOSING_ATTR);
             if (mobileMq.matches) setPinned(true);
@@ -218,6 +248,7 @@ export function useIosChatKeyboard() {
 
         return () => {
             if (raf) window.cancelAnimationFrame(raf);
+            if (anchorRaf) window.cancelAnimationFrame(anchorRaf);
             clearTimers();
             document.removeEventListener("focusin", handleFocusIn);
             window.removeEventListener("scroll", handleWindowScroll);
