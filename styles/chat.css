@@ -7277,3 +7277,35 @@
   background: currentColor;
   animation: chat-stream-cursor-blink 1s steps(2, start) infinite;
 }
+
+/* ── iOS 聊天室键盘适配（逻辑见 components/chat/use-ios-chat-keyboard.ts） ── */
+/* 聊天输入框聚焦期间把整页钉住：html/body 只有可视区那么高、外层 fixed，文档没有任何可滚动余量。
+   移动端平时整页是 100lvh（比带工具栏时的可视区高一截），iOS 弹键盘时会把这截余量连同整页一起推上去 */
+html[data-ios-chat-input],
+html[data-ios-chat-input] body {
+  height: 100% !important;
+}
+html[data-ios-chat-input] .app-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+/* 键盘高度已知（聚焦时按上一次的高度预抬）：文档高度直接缩到「键盘上方的可视高度」。
+   iOS 是先把可视区变矮、再重新排版，文档若还是原高度，就会在这一瞬间被推上去 */
+html[data-ios-chat-input][data-ios-chat-keyboard],
+html[data-ios-chat-input][data-ios-chat-keyboard] body {
+  height: calc(100lvh - var(--ios-chat-keyboard-inset, 0px)) !important;
+  min-height: 0 !important; /* base.css 给了 min-height: 100%，不清掉文档会被撑回整屏高 */
+}
+/* 键盘弹出时只把消息区和输入栏抬到键盘上沿，壁纸（在 .chat-room-wrapper 上）和顶栏保持原样 */
+html[data-ios-chat-keyboard] .chat-app .chat-room-wrapper > .page-body {
+  bottom: var(--ios-chat-keyboard-inset, 0px);
+}
+html[data-ios-chat-keyboard] .chat-app .chat-room-wrapper .chat-input-bar {
+  bottom: var(--ios-chat-keyboard-inset, 0px);
+  padding-bottom: 8px !important;
+}
+html[data-ios-chat-keyboard-closing] .chat-app .chat-room-wrapper > .page-body,
+html[data-ios-chat-keyboard-closing] .chat-app .chat-room-wrapper .chat-input-bar {
+  transition: bottom 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}

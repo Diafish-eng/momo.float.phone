@@ -233,7 +233,9 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
     };
 
     return (
-        <div ref={listRootRef} className="relative flex-1 h-full">
+        <div ref={listRootRef} className="relative flex-1 h-full" inert={Boolean(activeSession)}>
+            {/* 聊天室打开时列表被盖在下面：设为 inert，里面的搜索框等就不会被 iOS 抢去焦点
+                （发消息时焦点曾在输入框和这个看不见的搜索框之间来回跳） */}
             <PageShell
                 className="chat-list-page"
                 leftAction={
